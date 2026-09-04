@@ -19,6 +19,7 @@ import { createSignedTokenService } from "./signed-token.js";
 import { createTraceRouter } from "./trace-routes.js";
 import { TraceStore } from "./trace-store.js";
 import { createPersistentSessionStore, sessionCookieName } from "./session-store.js";
+import { createSampleRouter } from "./sample-routes.js";
 
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -109,6 +110,7 @@ export async function createBluePrintedApp(options = {}) {
   app.use(securityHeaders);
   app.use(sessionMiddleware(sessionStore));
   app.use(express.json({ limit: "64kb", strict: true }));
+  app.use(createSampleRouter(documentStore, { persistence: config.databaseUrl ? "postgres" : "memory" }));
   app.use(createReplitRouter(replit, {
     publicOrigin: config.publicOrigin,
     onDisconnect: (sessionId) => pairings.revokeSession(sessionId)
