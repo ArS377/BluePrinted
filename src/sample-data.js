@@ -16,7 +16,7 @@ export function sampleManifest(persistence = "memory") {
     edges: [
       { id: "save|calls|route", source: "component:FindingEditor#save", target: "route:POST:/api/sample/findings", relationship: "calls", evidence: "agent_declared" },
       { id: "route|writes|findings", source: "route:POST:/api/sample/findings", target: "table:sample.findings", relationship: "writes", evidence: "agent_declared" },
-      { id: "route|returns|list", source: "route:POST:/api/sample/findings", target: "component:FindingList#render", relationship: "returns", evidence: "agent_declared" }
+      { id: "route|renders|list", source: "route:POST:/api/sample/findings", target: "component:FindingList#render", relationship: "renders", evidence: "agent_declared" }
     ]
   };
 }

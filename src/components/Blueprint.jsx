@@ -21,6 +21,7 @@ export function Blueprint({ manifest, evidence = [], activeNodeId, diff, sample 
   const related = selected ? manifest.edges.filter((edge) => edge.source === selected.id || edge.target === selected.id) : manifest.edges;
   const added = new Set(diff?.nodes?.added || []);
   const changed = new Set(diff?.nodes?.changed || []);
+  useEffect(() => { setSelectedId(null); }, [activeNodeId]);
 
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => setWidth(Math.max(660, entry.contentRect.width)));

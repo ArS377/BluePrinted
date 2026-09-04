@@ -77,6 +77,7 @@ test("inspection stores a strict manifest snapshot", async () => {
   assert.equal(inspected.manifestStatus, "valid");
   assert.equal(detail.currentManifest.manifest.nodes[0].id, "component:src/App.jsx#save");
   assert.equal(detail.currentManifest.hash.length, 64);
+  assert.equal(detail.manifestDiff, null, "the first snapshot has no previous version to compare");
 });
 
 test("publication status records only the runtime URL returned by Replit", async () => {

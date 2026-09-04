@@ -21,6 +21,15 @@ export function parseScreen(hash = "") {
   return id || "sample";
 }
 
+export function viewerSocketUrl(pageUrl, projectId) {
+  const url = new URL(pageUrl);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/ws/view";
+  url.search = new URLSearchParams({ projectId }).toString();
+  url.hash = "";
+  return url.toString();
+}
+
 export function currentSnapshot(project) {
   return Boolean(project.currentManifest && project.currentManifest.versionId === project.currentVersionId && project.manifestStatus === "valid");
 }

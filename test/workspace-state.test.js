@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildGuidance, currentSnapshot, draftKey, parseScreen, previewUrl, readDraft, writeDraft } from "../src/workspace-state.js";
+import { sampleManifest } from "../src/sample-data.js";
+import { validateManifest } from "../lib/manifest.js";
+import { buildGuidance, currentSnapshot, draftKey, parseScreen, previewUrl, readDraft, writeDraft, viewerSocketUrl } from "../src/workspace-state.js";
 
 test("creation drafts survive navigation and malformed storage is safe", () => {
   const values = new Map();
@@ -17,6 +19,11 @@ test("screen links accept only supported views and project IDs", () => {
   assert.equal(parseScreen("#new"), "create");
   assert.equal(parseScreen("#project=82b0bc48-5b62-4c02-ae76-1fb54f913b93"), "82b0bc48-5b62-4c02-ae76-1fb54f913b93");
   assert.equal(parseScreen("#project=../../another-route"), "sample");
+});
+
+test("the trace feed excludes page fragments and unrelated query parameters", () => {
+  assert.equal(viewerSocketUrl("https://example.com/?replit=connected#project=project-one", "project-one"), "wss://example.com/ws/view?projectId=project-one");
+  assert.equal(viewerSocketUrl("http://localhost:3417/#new", "one"), "ws://localhost:3417/ws/view?projectId=one");
 });
 
 test("old snapshots do not confirm an updated build", () => {
@@ -43,4 +50,12 @@ test("runtime preview accepts only complete HTTPS or local development URLs", ()
   assert.equal(previewUrl("http://example.com"), null);
   assert.equal(previewUrl("https://example.com/app").hostname, "example.com");
   assert.equal(previewUrl("http://localhost:3000").port, "3000");
+});
+
+test("the sample uses the same architecture contract as generated apps", () => {
+  const appId = "82b0bc48-5b62-4c02-ae76-1fb54f913b93";
+  const versionId = "79164301-475f-4c50-bb8d-4c3db103c960";
+  const manifest = validateManifest({ ...sampleManifest(), appId, versionId }, { appId, versionId });
+  assert.equal(manifest.nodes.length, 4);
+  assert.equal(manifest.edges.length, 3);
 });

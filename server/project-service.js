@@ -58,7 +58,7 @@ export class ProjectService {
       versions,
       manifests,
       currentManifest,
-      manifestDiff: currentManifest ? diffManifests(previousManifest?.manifest, currentManifest.manifest) : null
+      manifestDiff: currentManifest && previousManifest ? diffManifests(previousManifest.manifest, currentManifest.manifest) : null
     };
   }
 

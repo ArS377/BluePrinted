@@ -6,15 +6,7 @@ import { Creator } from "./components/Creator.jsx";
 import { ProjectWorkspace } from "./components/ProjectWorkspace.jsx";
 import { SampleWorkspace } from "./components/SampleWorkspace.jsx";
 import { Tutorial } from "./components/Tutorial.jsx";
-import { parseScreen, readDraft } from "./workspace-state.js";
-
-function viewerSocketUrl(projectId) {
-  const url = new URL(window.location.href);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/ws/view";
-  url.search = new URLSearchParams({ projectId }).toString();
-  return url.toString();
-}
+import { parseScreen, readDraft, viewerSocketUrl } from "./workspace-state.js";
 
 function diagnosisTrace(trace) {
   if (!trace) return null;
@@ -108,7 +100,7 @@ export function App() {
     api.get("/api/replit/connection").then(async (status) => {
       if (cancelled) return;
       setConnection({ ...status, loading: false });
-      await loadProjects();
+      await loadProjects().catch((requestError) => { if (!cancelled) setError(requestError.message); });
     }).catch((requestError) => {
       if (cancelled) return;
       setConnection({ connected: false, loading: false });
@@ -165,7 +157,7 @@ export function App() {
     let socket, retry, stopped = false, attempts = 0;
     function openFeed() {
       if (stopped) return;
-      socket = new WebSocket(viewerSocketUrl(selectedProjectId), ["lb-view-v1"]);
+      socket = new WebSocket(viewerSocketUrl(window.location.href, selectedProjectId), ["lb-view-v1"]);
       socket.addEventListener("open", () => { if (!stopped) { attempts = 0; setLive(true); } });
       socket.addEventListener("close", (event) => {
         if (stopped) return;
@@ -356,7 +348,7 @@ export function App() {
         </button>
         {projects.map((item) => (
           <button className={screen === item.id ? "is-active" : ""} type="button" onClick={() => setScreen(item.id)} key={item.id}>
-            <i className={`state-${item.status}`}></i>{item.name}<small>{item.status.replaceAll("_", " ")}</small>
+            <i className={`state-${item.status}`}></i>{item.name}<small>{item.status === "agent_working" ? "build requested" : item.status.replaceAll("_", " ")}</small>
           </button>
         ))}
         <button className={screen === "create" ? "new-project is-active" : "new-project"} type="button" onClick={() => setScreen("create")}>

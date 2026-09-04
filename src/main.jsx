@@ -4,10 +4,11 @@ import "@fontsource-variable/source-sans-3";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 
 import { App } from "./App.jsx";
+import { ErrorBoundary } from "./components/ErrorBoundary.jsx";
 import "./styles.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary><App /></ErrorBoundary>
   </StrictMode>
 );
