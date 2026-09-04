@@ -10,7 +10,7 @@ The output is both a working Replit app and a versioned technical record:
 - sanitized traces from the published runtime;
 - diagnoses that cite event IDs from the selected trace.
 
-The prepared research-desk sample works before sign-in. It includes a successful save, a session-only database fault, trace playback, and evidence-linked diagnosis.
+The research-desk sample works before sign-in. Saving a finding calls the server and writes a session-scoped record. You can reject one write, replay its measured events, and follow the explanation back to the failed step.
 
 ## Product loop
 
@@ -33,7 +33,24 @@ BluePrinted shows only states backed by an MCP result, a validated manifest, pub
 - Zod validation
 - Node's built-in test runner
 
-Inter is bundled with the app. The interface does not depend on a font CDN.
+Source Sans 3 and IBM Plex Mono are bundled with the app. The interface does not depend on a font CDN.
+
+## Try the sample
+
+1. Edit the finding and choose **Save finding**. Expand **Saved findings** to see the stored note.
+2. Select an event to highlight its boundary. Choose **Replay trace** for slowed playback, or step through individual events.
+3. Check **Reject the next save** and save again. This request fails before storage is called; the draft stays in the form. The switch resets automatically.
+4. Choose **Explain trace**, then select a cited event. Without model credentials, the explanation is rule-based and labeled accordingly.
+
+Sample findings are scoped to the browser session, limited to 20, and expire after 24 hours. Local memory storage also clears when the server restarts. **Clear sample findings** removes only that session's notes. Traces exclude note content. The last ten sample traces are held in browser memory.
+
+Playback is slowed to one event every 700 ms; it does not represent the request's speed. Browser timings start at submit, server timings start at request arrival, and the total round trip is measured in the browser.
+
+## When a Replit build needs attention
+
+A returned editor link confirms that Replit accepted a request, not that Agent is still working. Open that link to check for setup questions, missing AI credentials, or credit limits. Once the app runs, return to BluePrinted and choose **Inspect build**. BluePrinted does not automatically repeat build or update requests.
+
+Creation drafts are saved in this tab's session storage across navigation and Replit connection. After an update, the previous architecture remains labeled as an old snapshot until a new inspection passes validation. A published app needs the BluePrinted bridge before runtime pairing can collect evidence.
 
 ## Run locally
 
@@ -135,6 +152,7 @@ The included `.replit` file runs `npm run check` during deployment and starts th
 - `lib/investigator.js` sanitizes traces and checks diagnosis citations.
 - `docs/design.md` records the product and engineering decisions.
 - `docs/version-1.md` records the implementation boundary with the public Replit MCP.
+- `docs/ui-refresh.md` records the current design decisions and usability improvements.
 
 ## Current boundary
 

@@ -62,6 +62,7 @@ export function Blueprint({ manifest, evidence = [], activeNodeId, diff, sample 
           <span><i className="legend-mark inferred" />{sample ? "Not run" : "Declared"}</span>
         </div>
       </header>
+      <span className="map-scroll-hint">Scroll the diagram to see all boundaries →</span>
       <div className="map-viewport" ref={frame} tabIndex={0} role="region" aria-label="Scrollable architecture diagram">
         <div className="map-canvas" style={{ width, height }}>
           <svg className="map-edges" width={width} height={height} aria-hidden="true">

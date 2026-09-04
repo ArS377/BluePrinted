@@ -4,11 +4,13 @@ import { ExternalIcon } from "../icons.jsx";
 import { AppPreview } from "./AppPreview.jsx";
 import { Blueprint } from "./Blueprint.jsx";
 import { EvidencePanel } from "./EvidencePanel.jsx";
+import { Dialog } from "./Dialog.jsx";
+import { buildGuidance, currentSnapshot, previewUrl } from "../workspace-state.js";
 
 function statusCopy(project) {
   return {
     creating: "requesting app",
-    agent_working: "Agent working",
+    agent_working: currentSnapshot(project) ? "Architecture inspected" : "Build requested",
     inspecting: "reading architecture",
     publishing: "publishing",
     published: "published",
@@ -44,9 +46,16 @@ export function ProjectWorkspace({
   const [change, setChange] = useState("");
   const [showUpdate, setShowUpdate] = useState(false);
   const [activeEvent, setActiveEvent] = useState(null);
+  const [urlError, setUrlError] = useState("");
+  const [now, setNow] = useState(Date.now);
   const runtimeWindow = useRef(null);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
   useEffect(() => setRuntimeUrl(project.runtimeUrl || ""), [project.runtimeUrl]);
+  useEffect(() => setActiveEvent(null), [activeTrace?.id]);
   useEffect(() => {
     if (liveEvent) setActiveEvent(liveEvent);
   }, [liveEvent]);
@@ -63,6 +72,9 @@ export function ProjectWorkspace({
   }, [pairing, project.id]);
 
   const manifest = project.currentManifest?.manifest;
+  const guidance = buildGuidance(project, now);
+  const snapshotIsCurrent = currentSnapshot(project);
+  const pairingExpired = pairing && pairing.expiresAt <= now;
   const currentTrace = useMemo(() => {
     if (!activeTrace) return null;
     if (liveEvent && liveEvent.traceId === activeTrace.id) {
@@ -73,8 +85,17 @@ export function ProjectWorkspace({
   }, [activeTrace, liveEvent]);
 
   function openRuntime() {
-    if (!project.runtimeUrl) return;
-    runtimeWindow.current = window.open(project.runtimeUrl, `blueprinted-${project.id}`);
+    const url = previewUrl(project.runtimeUrl);
+    if (!url) return;
+    runtimeWindow.current = window.open(url.href, `blueprinted-${project.id}`);
+  }
+
+  async function submitPairing(event) {
+    event.preventDefault();
+    const url = previewUrl(runtimeUrl.trim());
+    if (!url) { setUrlError("Enter a complete HTTPS URL, or a localhost URL for development."); return; }
+    setUrlError("");
+    await onPair(url.href);
   }
 
   function submitUpdate(event) {
@@ -93,7 +114,7 @@ export function ProjectWorkspace({
         <div className="project-title-block">
           <span className={`project-state state-${project.status}`}><i></i>{statusCopy(project)}</span>
           <h1>{project.name}</h1>
-          <p>{project.prompt}</p>
+          <details className="project-prompt"><summary>Original prompt</summary><p>{project.prompt}</p></details>
         </div>
         <div className="project-actions">
           {project.replUrl && (
@@ -101,7 +122,7 @@ export function ProjectWorkspace({
               Open in Replit <ExternalIcon />
             </a>
           )}
-          <button className="button button-paper" type="button" onClick={onInspect} disabled={Boolean(busyAction)}>
+          <button className="button button-paper" type="button" onClick={onInspect} disabled={Boolean(busyAction) || !project.replId}>
             {busyAction === "inspect" ? "Inspecting" : manifest ? "Inspect again" : "Inspect build"}
           </button>
           {project.status === "publishing" ? (
@@ -126,53 +147,66 @@ export function ProjectWorkspace({
         <button className={view === "app" ? "is-active" : ""} type="button" onClick={() => setView("app")}>App runtime</button>
         <button className={view === "changes" ? "is-active" : ""} type="button" onClick={() => setView("changes")}>Changes</button>
         <span></span>
-        <button className="update-action" type="button" onClick={() => setShowUpdate(true)}>Send an update to Replit</button>
+        <button className="update-action" type="button" onClick={() => setShowUpdate(true)} disabled={Boolean(busyAction) || !project.replId}>Send an update to Replit</button>
       </nav>
 
       <div className="workspace-grid">
-        <main className="workspace-main">
+        <div className="workspace-main">
           {view === "blueprint" && (
             manifest ? (
+              <>
+              {!snapshotIsCurrent && <div className="project-notice"><strong>Showing the previous snapshot</strong><p>{guidance.detail}</p></div>}
               <Blueprint
                 manifest={manifest}
                 evidence={evidence}
                 activeNodeId={activeEvent?.nodeId}
                 diff={project.manifestDiff}
               />
+              {snapshotIsCurrent && <section className="build-guidance"><h3>{guidance.title}</h3><p>{guidance.detail}</p>
+                {project.runtimeUrl && <button className="text-action" type="button" onClick={() => setView("app")}>Open App runtime →</button>}
+              </section>}
+              </>
             ) : (
               <section className="manifest-empty">
-                <span className="eyebrow">Blueprint pending</span>
-                <h2>Let Replit finish, then inspect the build.</h2>
-                <p>BluePrinted will ask Agent for a strict architecture manifest. It will not fill the map with guessed progress while Agent is working.</p>
+                <span className="context-label">Architecture not inspected</span>
+                <h2>{guidance.title}</h2>
+                <p>{guidance.detail}</p>
                 <ol>
-                  <li className={project.replId ? "is-done" : ""}><span>01</span> Replit project returned</li>
-                  <li><span>02</span> Agent finishes the app</li>
-                  <li><span>03</span> Manifest passes validation</li>
+                  <li className={project.replId ? "is-done" : ""}><span>{project.replId ? "✓" : "1"}</span> {project.replId ? "Replit returned a project" : "Awaiting a project from Replit"}</li>
+                  <li><span>2</span> Run the app in Replit and resolve any setup questions</li>
+                  <li><span>3</span> Return here to inspect the architecture</li>
                 </ol>
                 <button className="button button-ink" type="button" onClick={onInspect} disabled={Boolean(busyAction) || !project.replId}>Inspect build</button>
+                <div className="build-guidance">
+                  <h3>{guidance.waiting ? "Still on the build screen?" : "Where can I check progress?"}</h3>
+                  <p>Open Replit to see the latest activity. If Agent stopped for an AI key, credits, or a question, continuing here will not resume it.</p>
+                  {project.replUrl && <a href={project.replUrl} target="_blank" rel="noreferrer">Open this project in Replit ↗</a>}
+                </div>
+                {Number.isFinite(Date.parse(guidance.lastRecordedAt)) && <time className="last-confirmed" dateTime={guidance.lastRecordedAt}>Last recorded update: {new Date(guidance.lastRecordedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}. No live Agent progress feed.</time>}
               </section>
             )
           )}
 
           {view === "app" && (
             <div className="runtime-view">
-              <form className="runtime-connect" onSubmit={(event) => { event.preventDefault(); onPair(runtimeUrl); }}>
+              <form className="runtime-connect" onSubmit={submitPairing}>
                 <div>
                   <span className="eyebrow">Runtime pairing</span>
-                  <strong>{project.pairingStatus === "connected" ? "Runtime connected" : "Connect the published app"}</strong>
-                  <p>The one-use code can submit traces for this project. It cannot edit the app or read stored data.</p>
+                  <strong>{pairingExpired ? "Pairing code expired" : project.pairingStatus === "connected" ? "Runtime was paired" : "Connect the published app"}</strong>
+                  <p>The app needs the BluePrinted bridge before pairing can work. The one-use code expires after five minutes and grants trace submission only.</p>
+                  {pairing && !pairingExpired && <p>Code ready. The preview will send it to the matching app origin. If no events arrive, check that the bridge is installed.</p>}
                 </div>
                 <label>
                   Published URL
-                  <input type="url" value={runtimeUrl} onChange={(event) => setRuntimeUrl(event.target.value)} placeholder="https://your-app.replit.app" required />
+                  <input type="url" value={runtimeUrl} onChange={(event) => setRuntimeUrl(event.target.value)} placeholder="https://your-app.replit.app" required aria-describedby={urlError ? "runtime-url-error" : undefined} />
                 </label>
-                {project.pairingStatus === "connected" ? (
-                  <button className="button button-paper" type="button" onClick={onRevokePairing}>Disconnect runtime</button>
-                ) : (
-                  <button className="button button-teal" type="submit" disabled={busyAction === "pair"}>{busyAction === "pair" ? "Creating code" : "Pair runtime"}</button>
-                )}
+                {urlError && <p className="inline-error" id="runtime-url-error" role="alert">{urlError}</p>}
+                <div className="runtime-buttons">
+                  <button className="button button-teal" type="submit" disabled={Boolean(busyAction)}>{busyAction === "pair" ? "Creating code…" : pairing || project.pairingStatus === "connected" ? "Create a new pairing" : "Pair runtime"}</button>
+                  {(pairing || project.pairingStatus === "connected" || project.pairingStatus === "waiting") && <button className="button button-paper" type="button" disabled={Boolean(busyAction)} onClick={onRevokePairing}>Revoke runtime access</button>}
+                </div>
               </form>
-              <AppPreview project={{ ...project, runtimeUrl }} pairing={pairing} onOpenWindow={openRuntime} />
+              <AppPreview project={project} pairing={pairingExpired ? null : pairing} onOpenWindow={openRuntime} />
             </div>
           )}
 
@@ -210,7 +244,7 @@ export function ProjectWorkspace({
               </div>
             </section>
           )}
-        </main>
+        </div>
 
         <EvidencePanel
           project={project}
@@ -226,20 +260,18 @@ export function ProjectWorkspace({
         />
       </div>
 
-      {showUpdate && (
-        <div className="update-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowUpdate(false); }}>
-          <form className="update-sheet" onSubmit={submitUpdate}>
-            <span className="eyebrow">Prompt update</span>
-            <h2>What should change?</h2>
+      <Dialog open={showUpdate} onClose={() => { if (busyAction !== "update") setShowUpdate(false); }} labelledBy="update-title" className="update-sheet">
+          <form onSubmit={submitUpdate}>
+            <h2 id="update-title">What should change?</h2>
             <p>Replit edits the current app. BluePrinted keeps this version's map and traces before asking for a new snapshot.</p>
-            <textarea value={change} onChange={(event) => setChange(event.target.value)} minLength={10} maxLength={3000} placeholder="Add shared collections so two people can organize findings together." required autoFocus />
+            <label className="context-label" htmlFor="update-description">Describe the change</label>
+            <textarea id="update-description" value={change} onChange={(event) => setChange(event.target.value)} minLength={10} maxLength={3000} placeholder="Add shared collections so two people can organize findings together." required autoFocus disabled={busyAction === "update"} />
             <footer>
-              <button className="button button-paper" type="button" onClick={() => setShowUpdate(false)}>Cancel</button>
+              <button className="button button-paper" type="button" onClick={() => setShowUpdate(false)} disabled={busyAction === "update"}>Cancel</button>
               <button className="button button-clay" type="submit" disabled={change.trim().length < 10 || busyAction === "update"}>{busyAction === "update" ? "Sending update" : "Update on Replit"}</button>
             </footer>
           </form>
-        </div>
-      )}
+      </Dialog>
     </div>
   );
 }

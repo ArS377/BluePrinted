@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 
 import { ExternalIcon } from "../icons.jsx";
+import { previewUrl } from "../workspace-state.js";
 
 export function AppPreview({ project, pairing, onReady, onOpenWindow }) {
   const frame = useRef(null);
+  const url = previewUrl(project.runtimeUrl);
 
   useEffect(() => {
     function receive(event) {
@@ -17,7 +19,7 @@ export function AppPreview({ project, pairing, onReady, onOpenWindow }) {
     return () => window.removeEventListener("message", receive);
   }, [pairing, project.id, onReady]);
 
-  if (!project.runtimeUrl) {
+  if (!url) {
     return (
       <div className="preview-empty">
         <strong>No published runtime yet</strong>
@@ -29,18 +31,18 @@ export function AppPreview({ project, pairing, onReady, onOpenWindow }) {
   return (
     <section className="preview-shell">
       <header>
-        <span><i></i>{new URL(project.runtimeUrl).hostname}</span>
-        <button type="button" onClick={onOpenWindow}>Open synchronized window <ExternalIcon /></button>
+        <span>{url.hostname}</span>
+        <button type="button" onClick={onOpenWindow}>Open app in a window <ExternalIcon /></button>
       </header>
       <iframe
         key={pairing?.code || "unpaired"}
         ref={frame}
         title={`${project.name} runtime`}
-        src={project.runtimeUrl}
+        src={url.href}
         sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts"
       />
       <footer>
-        If the app blocks framing, use the synchronized window. Runtime evidence still returns here.
+        If the preview stays blank, open the app in a window. Its installed bridge must be paired to send events here.
       </footer>
     </section>
   );

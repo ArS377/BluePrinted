@@ -111,3 +111,32 @@ test("removing a project clears versions, traces, evidence, and active tokens", 
   assert.equal(await documents.get("trace_tokens", "token"), null);
   assert.equal(await documents.get("pairings", "pairing"), null);
 });
+
+test("a successful inspection clears the previous inspection error", async () => {
+  const replit = fakeReplit();
+  const repository = new ProjectRepository(new MemoryDocumentStore());
+  const service = new ProjectService({ repository, replit });
+  const created = await service.create("session", "https://example.com/callback", {
+    name: "Notes", prompt: "Build a notebook where I can save research findings."
+  });
+  await repository.save("session", { ...created, lastError: "Previous inspection failed.", manifestStatus: "invalid" });
+  const inspected = await service.inspect("session", "https://example.com/callback", created.id);
+  assert.equal(inspected.lastError, null);
+  assert.equal(inspected.manifestStatus, "valid");
+});
+
+test("publication without a returned URL does not claim the runtime is ready", async () => {
+  const replit = fakeReplit();
+  const repository = new ProjectRepository(new MemoryDocumentStore());
+  const service = new ProjectService({ repository, replit });
+  const created = await service.create("session", "https://example.com/callback", {
+    name: "Notes", prompt: "Build a notebook where I can save research findings."
+  });
+  for (const status of ["not_ready", "unpublished", "published"]) {
+    replit.callTool = async () => ({ structuredContent: { status } });
+    const checked = await service.refreshPublication("session", "https://example.com/callback", created.id);
+    assert.equal(checked.status, "publishing");
+    assert.equal(checked.runtimeUrl, null);
+    assert.equal(checked.milestones.some((item) => item.type === "published"), false);
+  }
+});

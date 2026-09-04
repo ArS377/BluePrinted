@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "./api.js";
 import { ExternalIcon, MarkIcon } from "./icons.jsx";
@@ -6,6 +6,7 @@ import { Creator } from "./components/Creator.jsx";
 import { ProjectWorkspace } from "./components/ProjectWorkspace.jsx";
 import { SampleWorkspace } from "./components/SampleWorkspace.jsx";
 import { Tutorial } from "./components/Tutorial.jsx";
+import { parseScreen, readDraft } from "./workspace-state.js";
 
 function viewerSocketUrl(projectId) {
   const url = new URL(window.location.href);
@@ -19,7 +20,7 @@ function diagnosisTrace(trace) {
   if (!trace) return null;
   const events = (trace.events || []).map((event, index) => ({
     id: event.id,
-    at: Number.isFinite(event.at) ? event.at : index * 20,
+    at: Number.isFinite(event.at) ? event.at : Math.max(0, Date.parse(event.timestamp) - Date.parse(trace.events[0]?.timestamp)) || 0,
     node: event.node || event.nodeId,
     kind: event.kind,
     level: event.level === "error" || event.kind === "error" || event.errorClass ? "error" : "info",
@@ -38,7 +39,12 @@ function diagnosisTrace(trace) {
 export function App() {
   const [connection, setConnection] = useState({ connected: false, loading: true });
   const [projects, setProjects] = useState([]);
-  const [screen, setScreen] = useState("sample");
+  const [screen, setScreen] = useState(() => {
+    try {
+      if (new URLSearchParams(window.location.search).has("replit") && readDraft(sessionStorage).prompt) return "create";
+    } catch { /* Continue without browser storage. */ }
+    return parseScreen(window.location.hash);
+  });
   const [project, setProject] = useState(null);
   const [busyAction, setBusyAction] = useState("");
   const [error, setError] = useState("");
@@ -54,12 +60,20 @@ export function App() {
   const [diagnosis, setDiagnosis] = useState(null);
   const [diagnosisBusy, setDiagnosisBusy] = useState(false);
   const [connectionMenu, setConnectionMenu] = useState(false);
+  const currentScreen = useRef(screen);
+  const toastTimer = useRef(null);
+  const currentTraceId = useRef(null);
+  currentScreen.current = screen;
+  currentTraceId.current = activeTrace?.id;
+
+  useEffect(() => { setDiagnosis(null); }, [activeTrace?.id]);
 
   const selectedProjectId = screen !== "sample" && screen !== "create" ? screen : null;
 
   const showToast = useCallback((message) => {
     setToast(message);
-    window.setTimeout(() => setToast(""), 3200);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(""), 5000);
   }, []);
 
   const loadProjects = useCallback(async () => {
@@ -70,61 +84,102 @@ export function App() {
 
   const loadProject = useCallback(async (projectId) => {
     const result = await api.get(`/api/projects/${projectId}`);
-    setProject(result.project);
+    if (currentScreen.current === projectId) setProject(result.project);
     setProjects((current) => current.map((item) => item.id === projectId ? result.project : item));
     return result.project;
   }, []);
 
   const loadTraces = useCallback(async (projectId) => {
     const result = await api.get(`/api/projects/${projectId}/traces`);
+    if (currentScreen.current !== projectId) return;
     setTraces(result.traces);
     setEvidence(result.evidence);
     if (result.traces[0]) {
       const detail = await api.get(`/api/projects/${projectId}/traces/${result.traces[0].id}`);
-      setActiveTrace(detail.trace);
+      if (currentScreen.current === projectId) setActiveTrace(detail.trace);
     } else {
       setActiveTrace(null);
     }
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      api.get("/api/replit/connection"),
-      loadProjects()
-    ]).then(([status]) => setConnection({ ...status, loading: false }))
-      .catch((requestError) => setError(requestError.message));
+    let cancelled = false;
+    // Establish one session cookie before other API requests or the sample mount.
+    api.get("/api/replit/connection").then(async (status) => {
+      if (cancelled) return;
+      setConnection({ ...status, loading: false });
+      await loadProjects();
+    }).catch((requestError) => {
+      if (cancelled) return;
+      setConnection({ connected: false, loading: false });
+      setError(requestError.message);
+    });
 
     const params = new URLSearchParams(window.location.search);
     const replit = params.get("replit");
     if (replit === "connected") showToast("Replit connected. You can create an app now.");
     if (replit === "error") setError(params.get("reason") || "Replit connection failed.");
-    if (replit) window.history.replaceState({}, "", window.location.pathname);
+    if (replit) window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+    return () => { cancelled = true; window.clearTimeout(toastTimer.current); };
   }, [loadProjects, showToast]);
 
   useEffect(() => {
+    const hash = screen === "create" ? "#new" : screen === "sample" ? "#sample" : `#project=${screen}`;
+    window.history.replaceState({}, "", window.location.pathname + window.location.search + hash);
+  }, [screen]);
+
+  useEffect(() => {
+    const navigate = () => setScreen(parseScreen(window.location.hash));
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
+  }, []);
+
+  useEffect(() => {
+    if (!connectionMenu) return;
+    const dismiss = (event) => { if (event.key === "Escape" || (event.type === "pointerdown" && !event.target.closest(".connection-menu"))) setConnectionMenu(false); };
+    document.addEventListener("keydown", dismiss);
+    document.addEventListener("pointerdown", dismiss);
+    return () => { document.removeEventListener("keydown", dismiss); document.removeEventListener("pointerdown", dismiss); };
+  }, [connectionMenu]);
+
+  useEffect(() => {
+    setProject(null);
+    setTraces([]);
+    setEvidence([]);
+    setActiveTrace(null);
+    setPairing(null);
+    setLiveEvent(null);
+    setLive(false);
     if (!selectedProjectId) {
-      setProject(null);
-      setTraces([]);
-      setEvidence([]);
-      setActiveTrace(null);
-      setPairing(null);
       return;
     }
+    if (connection.loading) return;
     setError("");
     setDiagnosis(null);
     Promise.all([loadProject(selectedProjectId), loadTraces(selectedProjectId)])
-      .catch((requestError) => setError(requestError.message));
-  }, [selectedProjectId, loadProject, loadTraces]);
+      .catch((requestError) => { if (currentScreen.current === selectedProjectId) setError(requestError.message); });
+  }, [selectedProjectId, connection.loading, loadProject, loadTraces]);
 
   useEffect(() => {
-    if (!selectedProjectId) return undefined;
-    const socket = new WebSocket(viewerSocketUrl(selectedProjectId), ["lb-view-v1"]);
-    socket.addEventListener("open", () => setLive(true));
-    socket.addEventListener("close", () => setLive(false));
-    socket.addEventListener("message", (message) => {
-      const packet = JSON.parse(message.data);
+    if (!selectedProjectId || connection.loading) return undefined;
+    let socket, retry, stopped = false, attempts = 0;
+    function openFeed() {
+      if (stopped) return;
+      socket = new WebSocket(viewerSocketUrl(selectedProjectId), ["lb-view-v1"]);
+      socket.addEventListener("open", () => { if (!stopped) { attempts = 0; setLive(true); } });
+      socket.addEventListener("close", (event) => {
+        if (stopped) return;
+        setLive(false);
+        if (event.code !== 1008) retry = window.setTimeout(openFeed, Math.min(15000, 1500 * 2 ** attempts++));
+      });
+      socket.addEventListener("message", (message) => {
+      if (stopped) return;
+      let packet;
+      try { packet = JSON.parse(message.data); } catch { return; }
       if (packet.type !== "trace.event") return;
       const event = packet.event;
+      if (!event?.id || !event.traceId) return;
+      const failed = event.kind === "error" || event.level === "error" || Boolean(event.errorClass);
       setLiveEvent(event);
       setEvidence((current) => current.some((item) => item.nodeId === event.nodeId)
         ? current
@@ -132,25 +187,27 @@ export function App() {
       setTraces((current) => {
         const existing = current.find((trace) => trace.id === event.traceId);
         if (existing) return current.map((trace) => trace.id === event.traceId
-          ? { ...trace, eventCount: trace.eventCount + 1, updatedAt: event.timestamp }
+          ? { ...trace, eventCount: trace.eventCount + 1, updatedAt: event.timestamp, status: failed ? "error" : trace.status }
           : trace);
-        return [{ id: event.traceId, projectId: selectedProjectId, versionId: event.versionId, eventCount: 1, status: event.kind === "error" ? "error" : "running", startedAt: event.timestamp, updatedAt: event.timestamp }, ...current];
+        return [{ id: event.traceId, projectId: selectedProjectId, versionId: event.versionId, eventCount: 1, status: failed ? "error" : "running", startedAt: event.timestamp, updatedAt: event.timestamp }, ...current].slice(0, 50);
       });
       setActiveTrace((current) => {
-        if (!current || current.id !== event.traceId) return { id: event.traceId, events: [event], status: event.kind === "error" ? "error" : "running" };
+        if (!current || current.id !== event.traceId) return { id: event.traceId, events: [event], status: failed ? "error" : "running" };
         if (current.events.some((item) => item.id === event.id)) return current;
-        return { ...current, events: [...current.events, event] };
+        return { ...current, events: [...current.events, event].slice(-256), status: failed ? "error" : current.status };
       });
     });
-    return () => socket.close();
-  }, [selectedProjectId]);
+    }
+    openFeed();
+    return () => { stopped = true; window.clearTimeout(retry); socket?.close(); };
+  }, [selectedProjectId, connection.loading]);
 
   async function runAction(action, callback, successMessage) {
     setBusyAction(action);
     setError("");
     try {
       const result = await callback();
-      if (successMessage) showToast(successMessage);
+      if (successMessage) showToast(typeof successMessage === "function" ? successMessage(result) : successMessage);
       return result;
     } catch (requestError) {
       if (requestError.code === "REPLIT_CONNECTION_REQUIRED") {
@@ -176,32 +233,43 @@ export function App() {
   }
 
   async function create(input) {
-    await runAction("create", async () => {
+    return runAction("create", async () => {
       const result = await api.post("/api/projects", input);
-      await loadProjects();
+      setProjects((current) => [result.project, ...current.filter((item) => item.id !== result.project.id)]);
       setScreen(result.project.id);
       return result;
-    }, "Replit accepted the project. Open the editor to watch Agent finish.");
+    }, (result) => result.project.outcomeUnknown ? "Replit did not confirm the result. Check its workspace before retrying." : "Request recorded. Open Replit to check the build.");
   }
 
   async function projectAction(action, path, body, successMessage) {
     return runAction(action, async () => {
-      await api.post(`/api/projects/${project.id}/${path}`, body);
-      return loadProject(project.id);
-    }, successMessage);
+      try {
+        await api.post(`/api/projects/${project.id}/${path}`, body);
+        return await loadProject(project.id);
+      } catch (requestError) {
+        // Failed inspections also update the build record on the server.
+        await loadProject(project.id).catch(() => {});
+        throw requestError;
+      }
+    }, (result) => result?.outcomeUnknown ? "The result is unknown. Check Replit before repeating the request." : successMessage);
   }
 
   async function selectTrace(traceId) {
-    const result = await api.get(`/api/projects/${project.id}/traces/${traceId}`);
-    setActiveTrace(result.trace);
-    setDiagnosis(null);
+    await runAction("trace", async () => {
+      const result = await api.get(`/api/projects/${project.id}/traces/${traceId}`);
+      if (currentScreen.current !== project.id) return;
+      setActiveTrace(result.trace);
+      setLiveEvent(null);
+      setDiagnosis(null);
+    });
   }
 
   async function pair(runtimeUrl) {
-    await runAction("pair", async () => {
+    return runAction("pair", async () => {
       const result = await api.post(`/api/projects/${project.id}/pairings`, { runtimeUrl });
       setPairing(result.pairing);
       await loadProject(project.id);
+      return result;
     }, "Pairing code ready. Reload or open the app to connect it.");
   }
 
@@ -224,11 +292,12 @@ export function App() {
 
   async function investigate() {
     if (!activeTrace) return;
+    const traceId = activeTrace.id;
     setDiagnosisBusy(true);
     setError("");
     try {
       const result = await api.post("/api/investigate", { trace: diagnosisTrace(activeTrace) });
-      setDiagnosis(result);
+      if (currentTraceId.current === traceId) setDiagnosis(result);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -275,7 +344,7 @@ export function App() {
               )}
             </div>
           ) : (
-            <button className="button button-ink compact" type="button" onClick={connect}>Connect Replit</button>
+            <button className="button button-ink compact" type="button" onClick={connect} disabled={connection.loading}>{connection.loading ? "Connecting…" : "Connect Replit"}</button>
           )}
         </div>
       </header>
@@ -305,12 +374,14 @@ export function App() {
       )}
 
       <main id="main-content">
-        {screen === "sample" && <SampleWorkspace onCreate={() => setScreen("create")} />}
+        {screen === "sample" && !connection.loading && <SampleWorkspace onCreate={() => setScreen("create")} />}
+        {screen === "sample" && connection.loading && <div className="page-loading" role="status">Opening the sample…</div>}
         {screen === "create" && (
           <Creator connected={connection.connected} busy={busyAction === "create"} onCreate={create} onConnect={connect} />
         )}
-        {selectedProjectId && project && (
+        {selectedProjectId && project?.id === selectedProjectId && (
           <ProjectWorkspace
+            key={project.id}
             project={project}
             busyAction={busyAction}
             onInspect={() => projectAction("inspect", "inspect", {}, "Architecture snapshot validated.")}

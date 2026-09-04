@@ -180,6 +180,7 @@ export class ProjectService {
         ...project,
         status: "agent_working",
         outcomeUnknown: false,
+        lastError: null,
         milestones: [...project.milestones, milestone("update_accepted", "Replit Agent is applying the change.")]
       });
     } catch (error) {
@@ -231,6 +232,7 @@ export class ProjectService {
         manifestStatus: "valid",
         manifestHash: snapshot.hash,
         outcomeUnknown: false,
+        lastError: null,
         milestones: [...project.milestones, milestone("manifest_valid", `${manifest.nodes.length} boundaries validated.`)]
       });
     } catch (error) {
@@ -264,11 +266,14 @@ export class ProjectService {
       replId: project.replId
     });
     const details = publicationDetails(result);
-    const isPublished = Boolean(details.runtimeUrl) || /published|ready|live/i.test(details.status);
+    // A status such as "not_ready" must not create a publication milestone.
+    // Even a "published" status without a URL cannot supply a runtime to pair.
+    const isPublished = Boolean(details.runtimeUrl);
     return this.repository.save(sessionId, {
       ...project,
       status: isPublished ? "published" : "publishing",
       publishStatus: details.status,
+      ...(isPublished ? { lastError: null, outcomeUnknown: false } : {}),
       runtimeUrl: details.runtimeUrl || project.runtimeUrl,
       milestones: isPublished && project.status !== "published"
         ? [...project.milestones, milestone("published", "Replit returned the live app URL.")]

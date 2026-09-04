@@ -52,6 +52,7 @@ summary { cursor: pointer; }
 summary::marker { color: var(--ink-soft); }
 .skip-link { position: fixed; top: -100px; left: 12px; background: white; padding: 12px 18px; z-index: 100; }
 .skip-link:focus { top: 10px; }
+.skip-link:not(:focus) { clip-path: inset(50%); height: 1px; width: 1px; overflow: hidden; white-space: nowrap; padding: 0; }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 42px; padding: 9px 17px; border: 1px solid transparent; border-radius: 5px; font-size: 15px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .button-ink { color: white; background: var(--ink); }
 .button-ink:hover:not(:disabled) { background: #3c4b44; }
@@ -127,6 +128,7 @@ summary::marker { color: var(--ink-soft); }
 .legend-mark { width: 8px; height: 8px; display: inline-block; border: 1px dashed var(--line-dark); border-radius: 2px; }
 .legend-mark.observed { background: var(--teal); border: 1px solid var(--teal); }
 .map-viewport { width: 100%; overflow: auto; max-height: 650px; background: #fafcfb; border-block: 1px solid #edf1ee; }
+.map-scroll-hint { display: none; }
 .map-canvas { position: relative; }
 .map-edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .map-edge { stroke: #a7b5ac; stroke-width: 1.5; stroke-dasharray: 4 4; }
@@ -242,6 +244,10 @@ summary::marker { color: var(--ink-soft); }
 .prompt-desk textarea { display: block; min-height: 210px; }
 .prompt-desk-foot { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-top: 16px; }
 .prompt-desk-foot > span { font-size: 12px; color: var(--ink-soft); }
+.draft-status { margin-top: 14px; font-size: 12px; }
+.project-prompt { font-size: 13px; color: var(--ink-soft); max-width: 680px; }
+.project-prompt p { margin-top: 8px; }
+.runtime-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
 .prompt-examples { margin: 22px 0; font-size: 14px; color: var(--ink-soft); }
 .prompt-examples > div { display: grid; margin-top: 8px; gap: 8px; }
 .prompt-examples button { padding: 8px 0; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none; font-size: 14px; color: var(--teal); }
@@ -386,6 +392,7 @@ dialog::backdrop { background: #1c2b2666; }
   .blueprint-caption { padding: 17px; }
   .blueprint-caption p { font-size: 13px; }
   .map-note { padding: 11px 17px; }
+  .map-scroll-hint { display: block; padding: 0 17px 10px; font-size: 11px; color: var(--ink-soft); }
   .connection-register { padding: 13px 17px; }
   .replay-bar { gap: 7px; }
   .replay-bar .icon-button { width: 30px; }

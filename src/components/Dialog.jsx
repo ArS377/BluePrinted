@@ -5,10 +5,11 @@ export function Dialog({ open, onClose, labelledBy, className = "", children }) 
   useEffect(() => {
     const dialog = ref.current;
     if (!open || !dialog) return;
+    const previousFocus = document.activeElement;
     dialog.showModal();
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { dialog.close(); document.body.style.overflow = previous; };
+    return () => { dialog.close(); document.body.style.overflow = previous; previousFocus?.focus(); };
   }, [open]);
   if (!open) return null;
   return <dialog ref={ref} className={className} aria-labelledby={labelledBy}
