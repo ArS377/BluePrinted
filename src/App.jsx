@@ -43,7 +43,7 @@ export function App() {
   const [busyAction, setBusyAction] = useState("");
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [tutorialOpen, setTutorialOpen] = useState(() => localStorage.getItem("lb_tutorial_seen") !== "1");
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [traces, setTraces] = useState([]);
   const [evidence, setEvidence] = useState([]);
@@ -237,7 +237,6 @@ export function App() {
   }
 
   function closeTutorial() {
-    localStorage.setItem("lb_tutorial_seen", "1");
     setTutorialOpen(false);
     setTutorialStep(0);
   }
@@ -337,11 +336,11 @@ export function App() {
       </main>
 
       <footer className="site-foot">
-        <span>Runtime traces keep structure, timing, and status. They leave values and secrets behind.</span>
-        <a href="https://github.com/ArS377/app-creator" target="_blank" rel="noreferrer">Source <ExternalIcon /></a>
+        <span>Runtime events record allowed fields only. Sample traces exclude note content.</span>
+        <a href="https://github.com/ArS377/BluePrinted" target="_blank" rel="noreferrer">Source <ExternalIcon /></a>
       </footer>
 
-      <Tutorial open={tutorialOpen} step={tutorialStep} onStep={setTutorialStep} onClose={closeTutorial} />
+      <Tutorial open={tutorialOpen} step={tutorialStep} onStep={setTutorialStep} onClose={closeTutorial} onTry={() => { closeTutorial(); setScreen("sample"); }} />
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );

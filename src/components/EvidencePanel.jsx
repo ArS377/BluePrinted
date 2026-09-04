@@ -1,138 +1,91 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 function eventTime(event, first) {
-  if (Number.isFinite(event.at)) return `${event.at} ms`;
-  const at = new Date(event.timestamp).getTime();
-  const start = new Date(first.timestamp).getTime();
-  return Number.isFinite(at - start) ? `${Math.max(0, at - start)} ms` : "now";
+  if (Number.isFinite(event.at)) return `+${event.at} ms`;
+  const delta = new Date(event.timestamp).getTime() - new Date(first.timestamp).getTime();
+  return Number.isFinite(delta) ? `+${Math.max(0, delta)} ms` : "";
 }
-
 function eventTitle(event) {
-  if (event.title) return event.title;
-  return {
-    "ui.action": "Interface action",
-    "http.client": "Browser request",
-    "http.server": "Route handled",
-    "db.query": "Database operation",
-    "ai.call": "Model call",
-    "ws.publish": "Message sent",
-    "ws.receive": "Message received",
-    "fault.applied": "Test fault applied",
-    error: "Error observed"
-  }[event.kind] || event.kind;
+  return event.title || ({
+    "ui.action": "Interface action", "http.client": "Browser request", "http.server": "Route handled",
+    "db.query": "Storage operation", "ai.call": "Model call", "ws.publish": "Message sent",
+    "ws.receive": "Message received", "fault.applied": "Test failure applied", error: "Error observed"
+  }[event.kind] || event.kind);
 }
 
-export function EvidencePanel({
-  project,
-  traces,
-  activeTrace,
-  activeEventId,
-  onTrace,
-  onEvent,
-  diagnosis,
-  diagnosisBusy,
-  onInvestigate,
-  live
-}) {
+export function EvidencePanel({ project, traces, activeTrace, activeEventId, onTrace, onEvent, diagnosis, diagnosisBusy, onInvestigate, live }) {
   const [section, setSection] = useState("trace");
   const events = activeTrace?.events || [];
   const first = events[0] || {};
-  const firstError = useMemo(() => events.find((event) => event.kind === "error" || event.level === "error"), [events]);
-
+  const selected = events.find((event) => event.id === activeEventId);
+  const firstError = events.find((event) => event.kind === "error" || event.level === "error" || event.errorClass);
+  const sample = project.id === "sample";
+  const nodeName = (event) => event.nodeId?.split(":").slice(1).join(":") || event.node || event.kind;
   return (
     <aside className="evidence-panel">
-      <header className="evidence-head">
-        <div>
-          <span className="eyebrow">Evidence</span>
-          <h2>{section === "trace" ? "Runtime trace" : "Build record"}</h2>
-        </div>
-        <span className={`live-signal ${live ? "is-live" : ""}`}>
-          <i></i>{live ? "listening" : "stored"}
-        </span>
+      <header className="evidence-head"><h2>{section === "trace" ? "Recorded events" : "Build record"}</h2>
+        <span className={`live-signal ${live ? "is-live" : ""}`}><i />{sample ? "Sample" : live ? "Feed open" : "Offline"}</span>
       </header>
-
-      <div className="evidence-tabs" role="tablist">
-        <button className={section === "trace" ? "is-active" : ""} onClick={() => setSection("trace")} type="button">
-          Trace <span>{events.length}</span>
-        </button>
-        <button className={section === "build" ? "is-active" : ""} onClick={() => setSection("build")} type="button">
-          Build <span>{project.milestones?.length || 0}</span>
-        </button>
-      </div>
-
+      <nav className="evidence-tabs" aria-label="Evidence views">
+        <button aria-pressed={section === "trace"} className={section === "trace" ? "is-active" : ""} type="button" onClick={() => setSection("trace")}>Trace <span>{events.length}</span></button>
+        {!sample && <button aria-pressed={section === "build"} className={section === "build" ? "is-active" : ""} type="button" onClick={() => setSection("build")}>Build <span>{project.milestones?.length || 0}</span></button>}
+      </nav>
       {section === "build" ? (
-        <ol className="build-ledger">
-          {(project.milestones || []).map((item, index) => (
-            <li key={`${item.type}-${index}`}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <div>
-                <strong>{item.type.replaceAll("_", " ")}</strong>
-                <p>{item.detail}</p>
-              </div>
-              <time>{item.at?.includes("T") ? new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : item.at}</time>
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <>
-          {traces.length > 1 && (
-            <label className="trace-select">
-              Trace
-              <select value={activeTrace?.id || ""} onChange={(event) => onTrace(event.target.value)}>
-                {traces.map((trace) => <option value={trace.id} key={trace.id}>{trace.id}</option>)}
-              </select>
-            </label>
-          )}
-          {events.length ? (
-            <ol className="trace-ledger">
-              {events.map((event, index) => {
-                const error = event.kind === "error" || event.level === "error";
-                return (
-                  <li className={`${event.id === activeEventId ? "is-active" : ""} ${error ? "is-error" : ""}`} key={event.id}>
-                    <button type="button" onClick={() => onEvent(event)}>
-                      <span className="event-index">{String(index + 1).padStart(2, "0")}</span>
-                      <span className="event-copy">
-                        <strong>{eventTitle(event)}</strong>
-                        <small>{event.nodeId || event.node}</small>
-                      </span>
-                      <time>{eventTime(event, first)}</time>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : (
-            <div className="trace-empty">
-              <span>···</span>
-              <strong>No runtime evidence yet</strong>
-              <p>Pair the published app, then use it normally. Its first traced action will appear here.</p>
-            </div>
-          )}
-
-          {events.length > 0 && (
-            <section className="investigator-result">
-              <header>
-                <span className="eyebrow">Investigator</span>
-                <button type="button" onClick={onInvestigate} disabled={diagnosisBusy}>
-                  {diagnosisBusy ? "Reading trace" : diagnosis ? "Check again" : "Explain this trace"}
-                </button>
-              </header>
-              {diagnosis ? (
-                <div>
-                  <h3>{diagnosis.summary}</h3>
-                  <p>{diagnosis.cause}</p>
-                  <ol>
-                    {diagnosis.evidence.map((item) => <li key={item.eventId}><code>{item.eventId}</code>{item.claim}</li>)}
-                  </ol>
-                  <strong className="next-step">Next: {diagnosis.nextStep}</strong>
-                </div>
-              ) : (
-                <p>{firstError ? "There is an error in this trace. Ask the investigator to tie its explanation to the recorded events." : "The action completed. The investigator can summarize the path without inventing missing evidence."}</p>
-              )}
-            </section>
-          )}
-        </>
-      )}
+        <ol className="build-ledger">{(project.milestones || []).map((item, index) => <li key={`${item.type}-${index}`}>
+          <span>{String(index + 1).padStart(2, "0")}</span><div><strong>{item.type.replaceAll("_", " ")}</strong><p>{item.detail}</p>
+            <time dateTime={item.at}>{Number.isFinite(Date.parse(item.at)) ? new Date(item.at).toLocaleString([], { dateStyle: "short", timeStyle: "short" }) : item.at}</time>
+          </div>
+        </li>)}</ol>
+      ) : <>
+        {traces.length > 1 && <label className="trace-select">Recorded action
+          <select value={activeTrace?.id || ""} onChange={(event) => onTrace(event.target.value)}>
+            {traces.map((trace, index) => <option value={trace.id} key={trace.id}>
+              {sample ? `Save ${traces.length - index} · ${trace.status === "error" ? "Failed" : "Saved"} · ${trace.duration} ms` : `${trace.status} · ${trace.id.slice(0, 12)}`}
+            </option>)}
+          </select>
+        </label>}
+        {events.length ? <>
+          <div className={`trace-summary ${firstError ? "is-error" : ""}`}>
+            <strong>{firstError ? (sample ? "Save failed" : "Error recorded") : sample ? "Finding saved" : "No recorded errors"}</strong>
+            {sample && <span>{activeTrace.duration} ms round trip</span>}
+          </div>
+          <ol className="trace-ledger">{events.map((event, index) => {
+            const error = event.kind === "error" || event.level === "error" || event.errorClass;
+            return <li className={`${event.id === activeEventId ? "is-active" : ""} ${error ? "is-error" : ""}`} key={event.id}>
+              <button type="button" aria-pressed={event.id === activeEventId} onClick={() => onEvent(event)}>
+                <span className="event-index">{String(index + 1).padStart(2, "0")}</span>
+                <span className="event-copy"><strong>{eventTitle(event)}</strong><small>{nodeName(event)}</small></span>
+                <time>{eventTime(event, first)}{event.clock && <small>{event.clock}</small>}</time>
+              </button>
+            </li>;
+          })}</ol>
+          {selected && <section className="event-detail" aria-label="Selected event">
+            <strong>{eventTitle(selected)}</strong>
+            <p>{selected.detail || [selected.operation, selected.routeTemplate, selected.status, selected.errorClass].filter(Boolean).join(" · ") || "This boundary was recorded without additional detail."}</p>
+            <code>{selected.kind}</code>
+          </section>}
+          {sample && <p className="timing-note">Server offsets start at request arrival; browser offsets start at submit. Replay preserves event order.</p>}
+          <section className="investigator-result">
+            <header><h3>Trace explanation</h3><button type="button" onClick={onInvestigate} disabled={diagnosisBusy}>{diagnosisBusy ? "Reading…" : diagnosis ? "Check again" : "Explain trace"}</button></header>
+            {diagnosis ? <div>
+              <span className="diagnosis-mode">{diagnosis.mode === "local" ? "Rule-based · No AI call" : "AI-generated · Check the cited events"}</span>
+              <h3>{diagnosis.summary}</h3><p>{diagnosis.cause}</p>
+              <ol>{diagnosis.evidence.map((item) => {
+                const event = events.find((entry) => entry.id === item.eventId);
+                return <li key={item.eventId}><button type="button" disabled={!event} onClick={() => event && onEvent(event)}>
+                  <span>Event {events.indexOf(event) + 1} ↗</span>{item.claim}
+                </button></li>;
+              })}</ol>
+              <p className="next-step">{diagnosis.nextStep}</p>
+            </div> : <p>{firstError ? "An error was recorded. Get an explanation with links to the events that support it." : "Get a summary of the recorded path with links to its evidence."}</p>}
+          </section>
+        </> : <div className="trace-empty">
+          <div className="empty-trace-lines" aria-hidden="true"><i /><i /><i /></div>
+          <h3>{sample ? "Your first save starts here" : "No events received"}</h3>
+          <p>{sample ? "Save the finding above. Each step in that request will appear in this panel." : "Open App runtime, pair the published app, then perform an instrumented action."}</p>
+          <small>{sample ? "You can test a failed save too." : "An open feed does not confirm that the app is paired."}</small>
+        </div>}
+      </>}
     </aside>
   );
 }

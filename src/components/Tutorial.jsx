@@ -1,96 +1,43 @@
-import { ArrowIcon, CloseIcon } from "../icons.jsx";
+import { CloseIcon } from "../icons.jsx";
+import { Dialog } from "./Dialog.jsx";
 
 const steps = [
-  {
-    number: "01",
-    label: "Describe",
-    title: "Start with an app, not a diagram.",
-    body: "Write the product you want. BluePrinted asks Replit to build a working app and keeps the editor link it returns.",
-    output: "Output: a real Replit app you can open and publish."
-  },
-  {
-    number: "02",
-    label: "Inspect",
-    title: "Turn the code into a readable map.",
-    body: "Once Agent finishes, inspect the app. Components, routes, tables, AI calls, and live channels appear as a versioned blueprint.",
-    output: "Dashed boundaries are inferred. Solid boundaries have runtime evidence."
-  },
-  {
-    number: "03",
-    label: "Observe",
-    title: "Use the app and watch the path.",
-    body: "Pair the published runtime, click through it normally, and follow each action across the system. Trace data is stripped to a narrow allowlist before storage.",
-    output: "One action becomes an ordered, inspectable trace."
-  },
-  {
-    number: "04",
-    label: "Change",
-    title: "Update the app without losing the before.",
-    body: "Send a change to Replit, inspect again, and compare architecture snapshots. The old trace stays attached to the version that produced it.",
-    output: "Added and removed boundaries are separated from behavior changes."
-  }
+  { label: "Try a save", title: "Save a finding in the sample.",
+    body: "Edit the note and choose Save finding. The server stores it for this session. Select a recorded event to highlight its boundary in the map.",
+    output: "Next, check Reject the next save and save again. Your draft stays in the form. Explain trace points to the failed write.",
+    path: ["Edit a note", "Save finding", "Select an event"] },
+  { label: "Create an app", title: "Describe what you want Replit to build.",
+    body: "Choose Create your own app, write a prompt, and connect Replit. BluePrinted sends the request and keeps the returned editor link. Replit may ask for input or credits before continuing.",
+    output: "A project link confirms that Replit accepted the request. It does not mean the app is finished.",
+    path: ["Write a prompt", "Connect Replit", "Open the editor"] },
+  { label: "Inspect the code", title: "Check the app in Replit, then inspect it.",
+    body: "When the app runs in Replit, return here and choose Inspect build. Replit reports components, routes, and storage. BluePrinted validates and saves that architecture snapshot.",
+    output: "Declared boundaries have not been observed running. A runtime event is needed to mark a boundary as observed.",
+    path: ["App runs", "Inspect build", "Architecture map"] },
+  { label: "Observe & update", title: "Pair the published app to record its actions.",
+    body: "Publish the app, open App runtime, and pair its URL. Use the instrumented app to collect events. Send an update when you want a change, then inspect again to compare versions.",
+    output: "Pairing requires the BluePrinted bridge in the generated app. Server-only actions need their own instrumentation; pairing alone does not expose them.",
+    path: ["Publish & pair", "Use the app", "Compare updates"] }
 ];
 
-export function Tutorial({ open, step, onStep, onClose }) {
-  if (!open) return null;
+export function Tutorial({ open, step, onStep, onClose, onTry }) {
   const current = steps[step];
-  return (
-    <div className="tutorial-backdrop" role="presentation">
-      <section className="tutorial-sheet" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
-        <header className="tutorial-head">
-          <div>
-            <span className="eyebrow">Sixty-second tour</span>
-            <strong>What comes out of BluePrinted</strong>
-          </div>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Close tutorial">
-            <CloseIcon />
-          </button>
-        </header>
-
-        <div className="tutorial-body">
-          <nav className="tutorial-index" aria-label="Tutorial steps">
-            {steps.map((item, index) => (
-              <button
-                className={index === step ? "is-current" : index < step ? "is-done" : ""}
-                type="button"
-                onClick={() => onStep(index)}
-                key={item.number}
-              >
-                <span>{item.number}</span>
-                <strong>{item.label}</strong>
-              </button>
-            ))}
-          </nav>
-
-          <div className={`tutorial-plate plate-${step}`}>
-            <div className="tutorial-diagram" aria-hidden="true">
-              <span className="diagram-prompt">prompt</span>
-              <i></i>
-              <span className="diagram-replit">Replit app</span>
-              <i></i>
-              <span className="diagram-map">living map</span>
-            </div>
-            <span className="tutorial-number">{current.number}</span>
-            <p className="eyebrow">{current.label}</p>
-            <h2 id="tutorial-title">{current.title}</h2>
-            <p className="tutorial-copy">{current.body}</p>
-            <p className="tutorial-output">{current.output}</p>
-          </div>
-        </div>
-
-        <footer className="tutorial-foot">
-          <span>{step + 1} of {steps.length}</span>
-          {step < steps.length - 1 ? (
-            <button className="button button-ink" type="button" onClick={() => onStep(step + 1)}>
-              Next <ArrowIcon />
-            </button>
-          ) : (
-            <button className="button button-clay" type="button" onClick={onClose}>
-              Try the sample <ArrowIcon />
-            </button>
-          )}
-        </footer>
+  return <Dialog open={open} onClose={onClose} labelledBy="tutorial-title" className="tutorial-sheet">
+    <header className="tutorial-head"><strong>BluePrinted guide</strong><button className="icon-button" type="button" onClick={onClose} aria-label="Close guide" autoFocus><CloseIcon /></button></header>
+    <div className="tutorial-body">
+      <nav className="tutorial-index" aria-label="Guide steps">{steps.map((item, index) => <button className={index === step ? "is-current" : ""} aria-current={index === step ? "step" : undefined}
+        type="button" onClick={() => onStep(index)} key={item.label}><span>{index + 1}</span>{item.label}</button>)}</nav>
+      <section className="tutorial-plate">
+        <p className="context-label">Step {step + 1} of {steps.length}</p>
+        <h2 id="tutorial-title">{current.title}</h2>
+        <p>{current.body}</p>
+        <ol className="tutorial-diagram">{current.path.map((label) => <li key={label}>{label}</li>)}</ol>
+        <p className="tutorial-output">{current.output}</p>
       </section>
     </div>
-  );
+    <footer className="tutorial-foot">
+      <button className="button button-paper" type="button" onClick={() => onStep(step - 1)} disabled={step === 0}>Back</button>
+      {step < steps.length - 1 ? <button className="button button-ink" type="button" onClick={() => onStep(step + 1)}>Next →</button> : <button className="button button-primary" type="button" onClick={onTry}>Open the sample →</button>}
+    </footer>
+  </Dialog>;
 }
