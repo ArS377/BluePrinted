@@ -6,6 +6,10 @@ import { EvidencePanel } from "./EvidencePanel.jsx";
 
 export function SampleWorkspace({ onCreate }) {
   const [fault, setFault] = useState(false);
+  const [replayed, setReplayed] = useState(false);
+  const [mobileView, setMobileView] = useState("map");
+  const editor = useRef(null);
+  const panels = useRef(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [note, setNote] = useState("Trees cool city streets by shading pavement and releasing water through their leaves.");
@@ -81,7 +85,7 @@ export function SampleWorkspace({ onCreate }) {
       setPersistence(result.persistence);
       if (response.ok) {
         setFindings((current) => [result.finding, ...current]);
-        setNotice("Finding saved. Replay the request, or reject the next save to see where it fails.");
+        setNotice("Saved! Follow its path in the block map.");
       } else {
         setError(result.error);
       }
@@ -130,62 +134,103 @@ export function SampleWorkspace({ onCreate }) {
   const activeEvent = trace?.events[position];
   const evidence = trace?.events.slice(0, position + 1) || [];
 
+  function showMap() {
+    setMobileView("map");
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      window.requestAnimationFrame(() => panels.current?.scrollIntoView({ block: "start" }));
+    }
+  }
+
+  function replay() {
+    if (!trace || busy) return;
+    showMap();
+    setReplayed(true);
+    if (playing) setPlaying(false);
+    else { if (position >= trace.events.length - 1) setPosition(-1); setPlaying(true); }
+  }
+  const hasSaved = traces.some((item) => item.status !== "error");
+  const hasFailed = traces.some((item) => item.status === "error");
+  const focusEditor = () => { editor.current?.focus(); editor.current?.select(); };
+  const hint = fault ? "Failure test armed. Save the note to see the request stop before storage."
+    : !trace ? "Start with a note in Research desk. Saving it sends a real request to the sample server."
+    : trace.status === "error" ? "The save failed; your note is still here. Select an event or choose Explain trace to inspect the error."
+    : "Your note is saved. Replay its path to follow the request through the blocks.";
+
   return (
     <div className="workspace-page sample-workspace">
       <section className="workspace-heading">
         <div>
-          <span className="context-label">Interactive sample · No account needed</span>
-          <h1>Follow a finding from form to storage.</h1>
-          <p>Try a save below. Select any recorded event to see where it happened.</p>
+          <span className="context-label"><i className="playground-dot" />A working sample. Yours to experiment with.</span>
+          <h1>Save a note. <span>Watch it travel.</span></h1>
+          <p>Use the app, follow the request, and see what happens when a save fails.</p>
         </div>
-        <button className="button button-primary" type="button" onClick={onCreate}>Create your own app <span aria-hidden="true">→</span></button>
+        <button className="button button-primary" type="button" onClick={onCreate}><span aria-hidden="true">+</span> Create your own app</button>
       </section>
 
-      <section className="sample-app" aria-label="Research desk sample">
-        <header className="sample-app-header"><h2>Research desk</h2><span>{persistence === "postgres" ? "PostgreSQL" : "Server memory"} · Session only</span></header>
-        <form className="sample-action-bar" onSubmit={save}>
-          <label className="sample-editor" htmlFor="finding-note">Finding
-            <textarea id="finding-note" value={note} onChange={(event) => setNote(event.target.value)} rows={2} maxLength={1000} required disabled={busy} />
-          </label>
-          <div className="sample-actions">
-            <label className={`fault-toggle ${fault ? "is-armed" : ""}`}>
-              <input type="checkbox" checked={fault} disabled={busy} onChange={(event) => setFault(event.target.checked)} />
-              <span>Reject the next save<small>Only this request. No saved data changes.</small></span>
+      <nav className="try-actions" aria-label="Try the playground">
+        <button type="button" className={hasSaved ? "is-done" : "is-next"} onClick={focusEditor} disabled={busy}>
+          <span className="try-number" aria-hidden="true">{hasSaved ? "✓" : "1"}</span><span><strong>Try a save</strong><small>Edit the note, then send it</small></span><span className="try-arrow" aria-hidden="true">↗</span>
+        </button>
+        <button type="button" className={replayed ? "is-done" : trace ? "is-next" : ""} onClick={replay} disabled={!trace || busy}>
+          <span className="try-number" aria-hidden="true">{replayed ? "✓" : "2"}</span><span><strong>{playing ? "Pause the replay" : "Replay its path"}</strong><small>{trace ? "Follow each recorded step" : "Available after your first save"}</small></span><span className="try-arrow" aria-hidden="true">▷</span>
+        </button>
+        <button type="button" className={fault ? "is-armed" : hasFailed ? "is-done" : ""} disabled={busy || !ready} onClick={() => { setFault(!fault); focusEditor(); }}>
+          <span className="try-number" aria-hidden="true">{hasFailed ? "✓" : "3"}</span><span><strong>{fault ? "Cancel failure test" : "Test a failed save"}</strong><small>{fault ? "Armed for your next save" : "Keep your data, inspect the error"}</small></span><span className="try-arrow" aria-hidden="true">↗</span>
+        </button>
+      </nav>
+      <p className="bench-hint" role="status"><span aria-hidden="true">↳</span>{hint}</p>
+
+      <div className="builder-bench">
+        <section className="sample-app" aria-label="Research desk sample">
+          <header className="sample-app-header"><span className="mini-app-icon" aria-hidden="true">▤</span><div><h2>Research desk</h2><span>Your mini-app</span></div><span className="sample-app-menu" aria-hidden="true">···</span></header>
+          <form className="sample-action-bar" onSubmit={save}>
+            <label className="sample-editor" htmlFor="finding-note">What did you find?
+              <textarea ref={editor} id="finding-note" value={note} onChange={(event) => setNote(event.target.value)} rows={5} maxLength={1000} required disabled={busy} />
             </label>
-            <button className="button button-ink" type="submit" disabled={busy || !ready || !note.trim()}>{busy ? "Saving…" : "Save finding"} <span aria-hidden="true">↗</span></button>
-          </div>
-        </form>
-        {error && <div className="inline-error" role="alert">{error}{!ready && <button type="button" onClick={load}>Retry connection</button>}</div>}
-        {notice && <p className="sample-notice" role="status">{notice}</p>}
-        <details className="saved-findings" open={findings.length > 0 ? true : undefined}>
-          <summary>Saved findings <span>{findings.length}</span></summary>
-          {findings.length ? <>
-            <ul>{findings.slice(0, 3).map((finding) => <li key={finding.id}>{finding.note}</li>)}</ul>
-            {findings.length > 3 && <details><summary>Show {findings.length - 3} more</summary><ul>{findings.slice(3).map((finding) => <li key={finding.id}>{finding.note}</li>)}</ul></details>}
-            <button className="text-action" type="button" disabled={busy} onClick={clear}>Clear sample findings</button>
-          </> : <p>Your saved notes will appear here. They expire after 24 hours{persistence === "memory" ? " or when the server restarts" : ""}.</p>}
-        </details>
-      </section>
-
-      <div className="workspace-grid">
-        <div className="workspace-main">
-          <Blueprint manifest={sampleManifest(persistence)} evidence={evidence} activeNodeId={activeEvent?.nodeId} sample />
-          <section className="replay-bar" aria-label="Trace replay">
-            <button className="button button-secondary" type="button" disabled={!trace || busy} onClick={() => {
-              if (playing) setPlaying(false);
-              else { if (position >= trace.events.length - 1) setPosition(-1); setPlaying(true); }
-            }}>{playing ? "Pause" : "Replay trace"}</button>
-            <button className="icon-button" type="button" aria-label="Previous event" disabled={!trace || position <= 0} onClick={() => { setPlaying(false); setPosition((value) => value - 1); }}>←</button>
-            <input type="range" min={0} max={Math.max(0, (trace?.events.length || 1) - 1)} value={Math.max(0, position)} disabled={!trace} aria-label="Replay event" aria-valuetext={activeEvent?.title || "No event"} onChange={(event) => { setPlaying(false); setPosition(Number(event.target.value)); }} />
-            <button className="icon-button" type="button" aria-label="Next event" disabled={!trace || position >= trace.events.length - 1} onClick={() => { setPlaying(false); setPosition((value) => value + 1); }}>→</button>
-            <span className="replay-position">{trace ? `${position + 1} / ${trace.events.length}` : "No trace yet"}</span>
-            <small>Slowed for playback. Timings are measured.</small>
+            <div className="sample-actions">
+              <button className="button button-ink sample-save" type="submit" disabled={busy || !ready || !note.trim()}>{busy ? "Saving…" : fault ? "Save with test failure" : "Save finding"} <span aria-hidden="true">↗</span></button>
+              <label className={`fault-toggle ${fault ? "is-armed" : ""}`}>
+                <input type="checkbox" checked={fault} disabled={busy} onChange={(event) => setFault(event.target.checked)} />
+                <span>Reject the next save<small>A one-request test. Saved notes stay safe.</small></span>
+              </label>
+            </div>
+          </form>
+          {error && <div className="inline-error" role="alert">{error}{!ready && <button type="button" onClick={load}>Retry connection</button>}</div>}
+          {notice && <p className="sample-notice" role="status">{notice}</p>}
+          {trace && <button className="mobile-map-jump" type="button" onClick={showMap}>See this request in the map →</button>}
+          <section className="saved-findings" aria-label="Saved findings">
+            <div className="section-heading"><h3>Saved findings</h3><span className="finding-count">{findings.length}</span></div>
+            {findings.length ? <>
+              <ul>{findings.slice(0, 3).map((finding) => <li key={finding.id}>{finding.note}</li>)}</ul>
+              {findings.length > 3 && <details><summary>Show {findings.length - 3} more</summary><ul>{findings.slice(3).map((finding) => <li key={finding.id}>{finding.note}</li>)}</ul></details>}
+              <button className="text-action" type="button" disabled={busy} onClick={clear}>Clear sample findings</button>
+            </> : <div className="notes-empty"><span aria-hidden="true">▧</span><p>A little empty in here.<br />Your first saved note goes here.</p></div>}
           </section>
+          <details className="sample-storage"><summary>Where does this go?</summary><p>{persistence === "postgres" ? "PostgreSQL" : "Server memory"}, scoped to your browser session. Notes expire after 24 hours{persistence === "memory" ? " or a server restart" : ""}. Trace events do not include your note text.</p></details>
+        </section>
+
+        <div ref={panels} className={`workspace-grid sample-map-area mobile-view-${mobileView}`}>
+          <nav className="bench-view-switch" aria-label="Playground panels">
+            <button type="button" aria-pressed={mobileView === "map"} onClick={() => setMobileView("map")}>Block map</button>
+            <button type="button" aria-pressed={mobileView === "activity"} onClick={() => setMobileView("activity")}>Activity <span>{trace?.events.length || 0}</span></button>
+          </nav>
+          <div className="workspace-main">
+            <Blueprint manifest={sampleManifest(persistence)} evidence={evidence} activeNodeId={activeEvent?.nodeId} sample />
+            <section className="replay-bar" aria-label="Trace replay">
+              <div className="replay-current"><span aria-hidden="true">▷</span><strong>{activeEvent?.title || (trace ? "Ready to replay" : "Your request, step by step")}</strong></div>
+              <button className="button button-secondary" type="button" disabled={!trace || busy} onClick={replay}>{playing ? "Pause" : "Replay trace"}</button>
+              <button className="icon-button" type="button" aria-label="Previous event" disabled={!trace || position <= 0} onClick={() => { setPlaying(false); setPosition((value) => value - 1); }}>←</button>
+              <input type="range" min={0} max={Math.max(0, (trace?.events.length || 1) - 1)} value={Math.max(0, position)} disabled={!trace} aria-label="Replay event" aria-valuetext={activeEvent?.title || "No event"} onChange={(event) => { setPlaying(false); setPosition(Number(event.target.value)); }} />
+              <button className="icon-button" type="button" aria-label="Next event" disabled={!trace || position >= trace.events.length - 1} onClick={() => { setPlaying(false); setPosition((value) => value + 1); }}>→</button>
+              <span className="replay-position">{trace ? `${position + 1} / ${trace.events.length}` : "0 / 0"}</span>
+              <small>Replay is slowed down. Event timings are measured.</small>
+            </section>
+          </div>
+          <EvidencePanel project={sampleProject} traces={traces} activeTrace={trace}
+            activeEventId={activeEvent?.id} onTrace={(id) => chooseTrace(traces.find((item) => item.id === id))}
+            onEvent={(event) => { setPlaying(false); setPosition(trace.events.findIndex((item) => item.id === event.id)); }}
+            diagnosis={diagnosis} diagnosisBusy={diagnosisBusy} onInvestigate={investigate} onViewMap={showMap} live={false} />
         </div>
-        <EvidencePanel project={sampleProject} traces={traces} activeTrace={trace}
-          activeEventId={activeEvent?.id} onTrace={(id) => chooseTrace(traces.find((item) => item.id === id))}
-          onEvent={(event) => { setPlaying(false); setPosition(trace.events.findIndex((item) => item.id === event.id)); }}
-          diagnosis={diagnosis} diagnosisBusy={diagnosisBusy} onInvestigate={investigate} live={false} />
       </div>
     </div>
   );

@@ -4,6 +4,11 @@ import { promptExamples } from "../sample-data.js";
 import { draftKey, readDraft, writeDraft } from "../workspace-state.js";
 
 function storage() { try { return window.sessionStorage; } catch { return null; } }
+const starters = [
+  { name: "Gather", title: "Plan a get-together", description: "Events, RSVPs, and a guest list." },
+  { name: "Marginalia", title: "Keep a reading journal", description: "Books, notes, and recurring themes." },
+  { name: "Kit room", title: "Track your studio gear", description: "Know what's available and who has it." }
+];
 
 export function Creator({ connected, busy, onCreate, onConnect }) {
   const [draft, setDraft] = useState(() => readDraft(storage()));
@@ -25,8 +30,8 @@ export function Creator({ connected, busy, onCreate, onConnect }) {
   return (
     <section className="creator" aria-labelledby="creator-title">
       <header className="creator-intro">
-        <span className="context-label">New app</span>
-        <h1 id="creator-title">What would you like to build?</h1>
+        <span className="context-label">Your next experiment</span>
+        <h1 id="creator-title">Got an app in mind?</h1>
         <p>Replit builds the app from your prompt. BluePrinted maps the code and collects events from the actions you run.</p>
       </header>
       <div className="creator-grid">
@@ -48,8 +53,11 @@ export function Creator({ connected, busy, onCreate, onConnect }) {
             </div>
             <p className="draft-status" id="draft-status">{saved ? "Draft saved in this browser tab. Connecting will keep it here." : "This browser cannot save the draft. Copy your prompt before connecting."}</p>
           </form>
-          <div className="prompt-examples"><span>Need a starting point?</span><div>
-            {promptExamples.map((example) => <button type="button" disabled={busy} onClick={() => setField("prompt", example)} key={example}>{example}</button>)}
+          <div className="prompt-examples"><span>Or start with a small idea</span><div>
+            {promptExamples.map((example, index) => <button type="button" disabled={busy} onClick={() => {
+              setDraft((current) => ({ name: current.name || starters[index].name, prompt: example }));
+              document.getElementById("project-prompt")?.focus();
+            }} key={example}><strong>{starters[index].title}</strong><small>{starters[index].description}</small><span className="template-use">Use this idea ↗</span></button>)}
           </div></div>
         </div>
         <aside className="creation-steps">

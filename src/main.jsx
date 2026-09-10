@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@fontsource-variable/source-sans-3";
+import "@fontsource-variable/bricolage-grotesque";
+import "@fontsource-variable/dm-sans";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 
 import { App } from "./App.jsx";

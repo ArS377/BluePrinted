@@ -317,8 +317,9 @@ export function App() {
           <span>BluePrinted</span>
         </button>
         <nav className="primary-nav" aria-label="Primary navigation">
-          <button className={screen === "sample" ? "is-active" : ""} type="button" onClick={() => setScreen("sample")}>Sample</button>
-          <button className={screen !== "sample" ? "is-active" : ""} type="button" onClick={() => setScreen(projects[0]?.id || "create")}>My blueprints</button>
+          <button className={screen === "sample" ? "is-active" : ""} type="button" onClick={() => setScreen("sample")}>Playground</button>
+          <button className={screen !== "sample" ? "is-active" : ""} type="button" onClick={() => setScreen(projects[0]?.id || "create")}>Your apps</button>
+          <button className="mobile-guide" type="button" onClick={() => setTutorialOpen(true)}>Guide</button>
         </nav>
         <div className="topbar-actions">
           <button className="help-button" type="button" onClick={() => setTutorialOpen(true)}>How it works</button>

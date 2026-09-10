@@ -13,7 +13,7 @@ function eventTitle(event) {
   }[event.kind] || event.kind);
 }
 
-export function EvidencePanel({ project, traces, activeTrace, activeEventId, onTrace, onEvent, diagnosis, diagnosisBusy, onInvestigate, live }) {
+export function EvidencePanel({ project, traces, activeTrace, activeEventId, onTrace, onEvent, diagnosis, diagnosisBusy, onInvestigate, onViewMap, live }) {
   const [section, setSection] = useState("trace");
   const events = activeTrace?.events || [];
   const first = events[0] || {};
@@ -23,7 +23,7 @@ export function EvidencePanel({ project, traces, activeTrace, activeEventId, onT
   const nodeName = (event) => event.nodeId?.split(":").slice(1).join(":") || event.node || event.kind;
   return (
     <aside className="evidence-panel">
-      <header className="evidence-head"><h2>{section === "trace" ? "Recorded events" : "Build record"}</h2>
+      <header className="evidence-head"><h2>{section === "trace" ? "Activity" : "Build record"}</h2>
         <span className={`live-signal ${live ? "is-live" : ""}`}><i />{sample ? "Sample" : live ? "Feed open" : "Offline"}</span>
       </header>
       <nav className="evidence-tabs" aria-label="Evidence views">
@@ -63,6 +63,7 @@ export function EvidencePanel({ project, traces, activeTrace, activeEventId, onT
             <strong>{eventTitle(selected)}</strong>
             <p>{selected.detail || [selected.operation, selected.routeTemplate, selected.status, selected.errorClass].filter(Boolean).join(" · ") || "This boundary was recorded without additional detail."}</p>
             <code>{selected.kind}</code>
+            {onViewMap && <button className="mobile-map-jump" type="button" onClick={onViewMap}>Show this step on the map →</button>}
           </section>}
           {sample && <p className="timing-note">Server offsets start at request arrival; browser offsets start at submit. Replay preserves event order.</p>}
           <section className="investigator-result">
@@ -81,9 +82,9 @@ export function EvidencePanel({ project, traces, activeTrace, activeEventId, onT
           </section>
         </> : <div className="trace-empty">
           <div className="empty-trace-lines" aria-hidden="true"><i /><i /><i /></div>
-          <h3>{sample ? "Your first save starts here" : "No events received"}</h3>
-          <p>{sample ? "Save the finding above. Each step in that request will appear in this panel." : "Open App runtime, pair the published app, then perform an instrumented action."}</p>
-          <small>{sample ? "You can test a failed save too." : "An open feed does not confirm that the app is paired."}</small>
+          <h3>{sample ? "Let's follow a request." : "No events received"}</h3>
+          <p>{sample ? "Save a note in Research desk. The steps it takes through the app will appear here." : "Open App runtime, pair the published app, then perform an instrumented action."}</p>
+          <small>{sample ? "Recorded from the working sample." : "An open feed does not confirm that the app is paired."}</small>
         </div>}
       </>}
     </aside>
