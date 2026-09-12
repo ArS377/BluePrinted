@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function eventTime(event, first) {
   if (Number.isFinite(event.at)) return `+${event.at} ms`;
@@ -13,14 +13,25 @@ function eventTitle(event) {
   }[event.kind] || event.kind);
 }
 
-export function EvidencePanel({ project, traces, activeTrace, activeEventId, onTrace, onEvent, diagnosis, diagnosisBusy, onInvestigate, onViewMap, live }) {
+export function EvidencePanel({ project, traces, activeTrace, activeEventId, onTrace, onEvent, diagnosis, diagnosisError, diagnosisBusy, onInvestigate, onViewMap, live }) {
   const [section, setSection] = useState("trace");
+  const explanation = useRef(null);
   const events = activeTrace?.events || [];
   const first = events[0] || {};
   const selected = events.find((event) => event.id === activeEventId);
   const firstError = events.find((event) => event.kind === "error" || event.level === "error" || event.errorClass);
   const sample = project.id === "sample";
   const nodeName = (event) => event.nodeId?.split(":").slice(1).join(":") || event.node || event.kind;
+
+  useEffect(() => {
+    if (!diagnosis && !diagnosisError) return;
+    const frame = window.requestAnimationFrame(() => {
+      explanation.current?.focus({ preventScroll: true });
+      explanation.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [diagnosis, diagnosisError]);
+
   return (
     <aside className="evidence-panel">
       <header className="evidence-head"><h2>{section === "trace" ? "Activity" : "Build record"}</h2>
@@ -67,8 +78,9 @@ export function EvidencePanel({ project, traces, activeTrace, activeEventId, onT
           </section>}
           {sample && <p className="timing-note">Server offsets start at request arrival; browser offsets start at submit. Replay preserves event order.</p>}
           <section className="investigator-result">
-            <header><h3>Trace explanation</h3><button type="button" onClick={onInvestigate} disabled={diagnosisBusy}>{diagnosisBusy ? "Reading…" : diagnosis ? "Check again" : "Explain trace"}</button></header>
-            {diagnosis ? <div>
+            <header><h3>Trace explanation</h3><button type="button" onClick={onInvestigate} disabled={diagnosisBusy}>{diagnosisBusy ? "Reading…" : diagnosisError ? "Try again" : diagnosis ? "Check again" : "Explain trace"}</button></header>
+            <div ref={explanation} className="explanation-response" tabIndex={-1} aria-live="polite">
+            {diagnosisError ? <p className="investigator-error" role="alert"><strong>Couldn’t explain this trace.</strong> {diagnosisError}</p> : diagnosis ? <div>
               <span className="diagnosis-mode">{diagnosis.mode === "local" ? "Rule-based · No AI call" : "AI-generated · Check the cited events"}</span>
               <h3>{diagnosis.summary}</h3><p>{diagnosis.cause}</p>
               <ol>{diagnosis.evidence.map((item) => {
@@ -79,6 +91,7 @@ export function EvidencePanel({ project, traces, activeTrace, activeEventId, onT
               })}</ol>
               <p className="next-step">{diagnosis.nextStep}</p>
             </div> : <p>{firstError ? "An error was recorded. Get an explanation with links to the events that support it." : "Get a summary of the recorded path with links to its evidence."}</p>}
+            </div>
           </section>
         </> : <div className="trace-empty">
           <div className="empty-trace-lines" aria-hidden="true"><i /><i /><i /></div>

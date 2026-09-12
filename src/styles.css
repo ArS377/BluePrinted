@@ -256,6 +256,9 @@ summary::marker { color: var(--ink-soft); }
 .investigator-result header h3 { font-size: 15px; }
 .investigator-result header button { border: 0; background: none; color: var(--blue); font-size: 11px; font-weight: 500; padding: 6px 0; }
 .investigator-result p { font-size: 12px; }
+.investigator-result .explanation-response:focus { outline: none; }
+.investigator-result .investigator-error { margin: 0; padding: 11px 12px; border: 1px solid #d99084; background: #fff0ec; color: #7c2d25; line-height: 1.45; }
+.investigator-result .investigator-error strong { display: block; margin-bottom: 2px; color: #64231d; }
 .investigator-result > div h3 { font-size: 18px; margin: 8px 0; }
 .diagnosis-mode { color: var(--ink-soft); font-size: 10px; }
 .investigator-result ol { list-style: none; padding: 0; margin: 14px 0; }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
+import { investigatorFailureMessage } from "../investigator-feedback.js";
 import { sampleManifest, sampleProject } from "../sample-data.js";
 import { Blueprint } from "./Blueprint.jsx";
 import { EvidencePanel } from "./EvidencePanel.jsx";
@@ -20,6 +21,7 @@ export function SampleWorkspace({ onCreate }) {
   const [position, setPosition] = useState(-1);
   const [playing, setPlaying] = useState(false);
   const [diagnosis, setDiagnosis] = useState(null);
+  const [diagnosisError, setDiagnosisError] = useState("");
   const [diagnosisBusy, setDiagnosisBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -58,6 +60,7 @@ export function SampleWorkspace({ onCreate }) {
     setPosition(next.events.length - 1);
     setPlaying(false);
     setDiagnosis(null);
+    setDiagnosisError("");
   }
 
   async function save(event) {
@@ -123,11 +126,15 @@ export function SampleWorkspace({ onCreate }) {
     if (!trace) return;
     const id = trace.id;
     setDiagnosisBusy(true);
-    setError("");
+    setDiagnosisError("");
     try {
       const result = await api.post("/api/investigate", { trace });
       if (mounted.current && selectedTrace.current === id) setDiagnosis(result);
-    } catch (err) { if (mounted.current) setError(err.message); }
+    } catch (err) {
+      if (mounted.current && selectedTrace.current === id) {
+        setDiagnosisError(investigatorFailureMessage(err.message));
+      }
+    }
     finally { if (mounted.current) setDiagnosisBusy(false); }
   }
 
@@ -229,7 +236,7 @@ export function SampleWorkspace({ onCreate }) {
           <EvidencePanel project={sampleProject} traces={traces} activeTrace={trace}
             activeEventId={activeEvent?.id} onTrace={(id) => chooseTrace(traces.find((item) => item.id === id))}
             onEvent={(event) => { setPlaying(false); setPosition(trace.events.findIndex((item) => item.id === event.id)); }}
-            diagnosis={diagnosis} diagnosisBusy={diagnosisBusy} onInvestigate={investigate} onViewMap={showMap} live={false} />
+            diagnosis={diagnosis} diagnosisError={diagnosisError} diagnosisBusy={diagnosisBusy} onInvestigate={investigate} onViewMap={showMap} live={false} />
         </div>
       </div>
     </div>
