@@ -140,6 +140,18 @@ summary::marker { color: var(--ink-soft); }
 .fault-armed { margin-top: 10px; color: var(--fault); font-size: 12px; }
 .demo-workbench .event-detail .mobile-map-jump { display: block; }
 .demo-workbench .sample-actions { grid-template-columns: 1fr; }
+.pane-switch, .return-to-app { display: none; }
+@media (max-width: 899px) {
+  .demo-workbench { grid-template-columns: minmax(0, 1fr); }
+  .demo-workbench.pane-app > .inspector-pane, .demo-workbench.pane-inspector > .preview-pane { display: none; }
+  .pane-switch { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .pane-switch button { flex: 1; padding: 14px 8px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--ink-soft); }
+  .pane-switch button[aria-pressed="true"] { border-bottom-color: var(--blue); color: var(--blue); }
+  .pane-switch span { font-size: 11px; }
+  .preview-stage { padding: 14px; }
+  .pane-heading { min-height: 0; padding: 16px 0; }
+  .return-to-app { display: block; margin-top: 12px; padding: 8px 0; border: 0; background: transparent; color: var(--blue); }
+}
 .sample-workspace .workspace-heading h1 { font-size: clamp(26px, 3vw, 40px); }
 .sample-workspace .workspace-heading .button { flex-shrink: 0; }
 .workspace-grid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 18px; align-items: start; }

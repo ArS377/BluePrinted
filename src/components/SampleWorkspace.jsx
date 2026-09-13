@@ -8,6 +8,7 @@ import { EvidencePanel } from "./EvidencePanel.jsx";
 export function SampleWorkspace({ onCreate }) {
   const [fault, setFault] = useState(false);
   const [mobileView, setMobileView] = useState("map");
+  const [pane, setPane] = useState("app");
   const editor = useRef(null);
   const panels = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -142,11 +143,17 @@ export function SampleWorkspace({ onCreate }) {
 
   function showActivity() {
     setMobileView("activity");
+    setPane("inspector");
+    window.requestAnimationFrame(() => {
+      document.getElementById("inspector-title")?.focus({ preventScroll: true });
+      panels.current?.scrollIntoView({ block: "nearest" });
+    });
   }
 
   function showMap() {
     setMobileView("map");
-    if (window.matchMedia("(max-width: 760px)").matches) {
+    setPane("inspector");
+    if (window.matchMedia("(max-width: 899px)").matches) {
       window.requestAnimationFrame(() => panels.current?.scrollIntoView({ block: "start" }));
     }
   }
@@ -168,7 +175,11 @@ export function SampleWorkspace({ onCreate }) {
         <button className="button button-secondary" type="button" onClick={onCreate}><span aria-hidden="true">+</span> Create your own app</button>
       </section>
 
-      <div className="demo-workbench">
+      <nav className="pane-switch" aria-label="Playground views">
+        <button type="button" aria-pressed={pane === "app"} onClick={() => setPane("app")}>App preview</button>
+        <button type="button" aria-pressed={pane === "inspector"} onClick={() => setPane("inspector")}>Inspector {traces.length > 0 && <span>· {traces.length} recorded</span>}</button>
+      </nav>
+      <div className={`demo-workbench pane-${pane}`}>
         <section className="preview-pane" aria-labelledby="app-preview-title">
           <header className="pane-heading"><h2 id="app-preview-title">App preview</h2><p>Research Desk is a demo note-taking app. Save a note to see how it works.</p></header>
           <div className="preview-stage">
@@ -198,7 +209,7 @@ export function SampleWorkspace({ onCreate }) {
         </section>
 
         <section ref={panels} className="inspector-pane" aria-labelledby="inspector-title">
-          <header className="pane-heading"><h2 id="inspector-title">BluePrinted inspector</h2><p>See the steps behind each action in the demo app.</p></header>
+          <header className="pane-heading"><h2 id="inspector-title" tabIndex={-1}>BluePrinted inspector</h2><p>See the steps behind each action in the demo app.</p></header>
           <div className={`inspector-status ${traces[0]?.status === "error" ? "is-error" : ""}`}>
             <p role="status">{traces.length ? `Latest action: Save note · ${traces[0].status === "error" ? "Failed" : "Succeeded"}` : "Save a note in the app preview to record an action."}</p>
             {traces.length > 0 && <button type="button" onClick={() => { chooseTrace(traces[0]); showActivity(); }}>View trace →</button>}
@@ -231,6 +242,7 @@ export function SampleWorkspace({ onCreate }) {
               <span>Make the next save fail<small>Affects one save. Existing notes stay safe.</small></span>
             </label>
             {fault && <p className="fault-armed" role="status">Armed. Save a note in the app preview to test the failure.</p>}
+            {fault && <button className="return-to-app" type="button" onClick={() => { setPane("app"); window.requestAnimationFrame(() => editor.current?.focus()); }}>Go to app preview →</button>}
           </section>
           <details className="sample-storage"><summary>Sample storage & privacy</summary><p>{persistence === "postgres" ? "PostgreSQL" : "Server memory"}, scoped to your browser session. Notes expire after 24 hours{persistence === "memory" ? " or a server restart" : ""}. Trace events do not include your note text.</p></details>
         </section>
