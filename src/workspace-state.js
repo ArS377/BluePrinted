@@ -47,6 +47,8 @@ export function buildGuidance(project, now = Date.now()) {
     detail: "Open the app in Replit and check that it runs. Then inspect again. Any previous snapshot is kept, but it may not describe the current code." };
   if (project.status === "publishing") return { ...common, title: "Publication has been requested.",
     detail: "Check publication status for the app URL. If Replit needs deployment settings or credits, resolve that in its editor." };
+  if (previewUrl(project.runtimeUrl) && !currentSnapshot(project)) return { ...common, title: "Inspect the published app’s architecture.",
+    detail: "The published URL is available in App preview. Choose Inspect build to create a map of its components and connections. You can use the preview before inspecting or pairing." };
   if (currentSnapshot(project)) return { ...common, title: project.runtimeUrl ? "The published app is ready to pair." : "The architecture snapshot is saved.",
     detail: project.runtimeUrl ? "Open App runtime, pair the published URL, and perform an instrumented action to collect events." : "Check the app in Replit, then publish it. Pair the published URL to collect runtime evidence." };
   return { ...common, title: waiting ? "Check whether Replit needs input." : "Open the build in Replit.",

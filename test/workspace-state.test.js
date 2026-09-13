@@ -52,6 +52,14 @@ test("runtime preview accepts only complete HTTPS or local development URLs", ()
   assert.equal(previewUrl("http://localhost:3000").port, "3000");
 });
 
+test("a published runtime without a snapshot offers inspection instead of build setup", () => {
+  const project = { replId: "known", status: "published", runtimeUrl: "https://sidequest.replit.app" };
+  assert.match(buildGuidance(project).title, /published app/);
+  assert.match(buildGuidance(project).detail, /before inspecting or pairing/);
+  assert.doesNotMatch(buildGuidance(project).detail, /credits|waiting/);
+  assert.match(buildGuidance({ ...project, runtimeUrl: "javascript:alert(1)" }).detail, /cannot see whether Agent/);
+});
+
 test("the sample uses the same architecture contract as generated apps", () => {
   const appId = "82b0bc48-5b62-4c02-ae76-1fb54f913b93";
   const versionId = "79164301-475f-4c50-bb8d-4c3db103c960";
