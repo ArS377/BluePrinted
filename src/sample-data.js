@@ -6,10 +6,10 @@ export const sampleProject = {
 export function sampleManifest(persistence = "memory") {
   return {
     schemaVersion: "1", name: "Research desk",
-    summary: "Save a finding, then follow the request through the app.",
+    summary: "Save a note, then follow the request through the app.",
     nodes: [
-      { id: "component:FindingEditor#save", kind: "component", label: "Finding editor", evidence: "agent_declared", sourceFile: "src/components/SampleWorkspace.jsx", metadata: { action: "submit" } },
-      { id: "component:FindingList#render", kind: "component", label: "Saved findings", evidence: "agent_declared", sourceFile: "src/components/SampleWorkspace.jsx", metadata: { action: "render" } },
+      { id: "component:FindingEditor#save", kind: "component", label: "Note editor", evidence: "agent_declared", sourceFile: "src/components/SampleWorkspace.jsx", metadata: { action: "submit" } },
+      { id: "component:FindingList#render", kind: "component", label: "Saved notes", evidence: "agent_declared", sourceFile: "src/components/SampleWorkspace.jsx", metadata: { action: "render" } },
       { id: "route:POST:/api/sample/findings", kind: "route", label: "Save endpoint", evidence: "agent_declared", sourceFile: "server/sample-routes.js", metadata: { method: "POST", path: "/api/sample/findings" } },
       { id: "table:sample.findings", kind: "table", label: persistence === "postgres" ? "PostgreSQL store" : "Session memory", evidence: "agent_declared", sourceFile: "server/document-store.js", metadata: { retention: "24 hours", scope: "this browser session" } }
     ],

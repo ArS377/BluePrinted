@@ -37,10 +37,12 @@ Source Sans 3 and IBM Plex Mono are bundled with the app. The interface does not
 
 ## Try the sample
 
-1. Edit the finding and choose **Save finding**. Expand **Saved findings** to see the stored note.
-2. Select an event to highlight its boundary. Choose **Replay trace** for slowed playback, or step through individual events.
-3. Check **Reject the next save** and save again. This request fails before storage is called; the draft stays in the form. The switch resets automatically.
-4. Choose **Explain trace**, then select a cited event. Without model credentials, the explanation is rule-based and labeled accordingly.
+1. In **App preview**, edit the note in Research Desk and choose **Save note**. The result appears under **Saved notes**.
+2. Choose **See what happened** to open the trace in **BluePrinted inspector**. Use **Activity** for recorded events and **Explain trace**, or **Map** for the architecture and **Replay trace**.
+3. In the inspector, check **Make the next save fail** and save again in App preview. This request fails before storage is called; the draft stays in the form. The switch resets automatically.
+4. Select a cited event in the explanation to inspect the failed step. Without model credentials, the explanation is rule-based and labeled accordingly.
+
+On screens narrower than 900px, use **App preview** and **Inspector** to switch panes. Drafts, traces, and map positions stay in place when switching views.
 
 Sample findings are scoped to the browser session, limited to 20, and expire after 24 hours. Local memory storage also clears when the server restarts. **Clear sample findings** removes only that session's notes. Traces exclude note content. The last ten sample traces are held in browser memory.
 

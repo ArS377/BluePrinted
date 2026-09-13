@@ -2,10 +2,18 @@ import { CloseIcon } from "../icons.jsx";
 import { Dialog } from "./Dialog.jsx";
 
 const steps = [
-  { label: "Try a save", title: "Save a finding in the sample.",
-    body: "Edit the note and choose Save finding. The server stores it for this session. Select a recorded event to highlight its boundary in the map.",
-    output: "Next, check Reject the next save and save again. Your draft stays in the form. Explain trace points to the failed write.",
-    path: ["Edit a note", "Save finding", "Select an event"] },
+  { label: "Meet the two panes", title: "An app to use. An inspector to understand it.",
+    body: "App preview contains Research Desk, a small note-taking app. BluePrinted inspector shows what happens behind its buttons. On a smaller screen, use App preview and Inspector to switch between them.",
+    output: "Research Desk is the demo being observed. BluePrinted is the tool observing it.",
+    path: ["App preview", "Save a note", "BluePrinted inspector"] },
+  { label: "Follow a save", title: "Save a note, then see what happened.",
+    body: "Choose Save note in App preview. The note appears under Saved notes. Choose See what happened to open the recorded action in the inspector’s Activity view. Explain trace describes the result and links to its evidence.",
+    output: "Open Map and choose Replay trace to follow the action through the app’s parts. Replay shows the saved record; it does not save the note again.",
+    path: ["Save note", "View trace", "Explain trace"] },
+  { label: "Try a failure", title: "See where a failed save stops.",
+    body: "In the inspector, check Make the next save fail. Return to App preview and save a note. The draft stays in the editor and existing notes stay safe. View the trace to see the failed step.",
+    output: "The failure test resets after one save. Save again to compare a successful request.",
+    path: ["Arm the test", "Save note", "Inspect the failure"] },
   { label: "Create an app", title: "Describe what you want Replit to build.",
     body: "Choose Create your own app, write a prompt, and connect Replit. BluePrinted sends the request and keeps the returned editor link. Replit may ask for input or credits before continuing.",
     output: "A project link confirms that Replit accepted the request. It does not mean the app is finished.",
