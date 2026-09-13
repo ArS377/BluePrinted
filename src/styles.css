@@ -130,6 +130,16 @@ summary::marker { color: var(--ink-soft); }
 .inspector-switch button[aria-pressed="true"] { color: var(--blue); background: white; }
 .inspector-switch span { margin-left: 6px; font-family: var(--mono); font-size: 11px; }
 .demo-workbench [hidden] { display: none !important; }
+.preview-handoff { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 14px 4px; font-size: 12px; color: var(--ink-soft); }
+.preview-handoff button, .inspector-status button { border: 0; padding: 6px 0; color: var(--blue); background: transparent; font-size: 12px; }
+.inspector-status { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 13px 16px; margin-bottom: 12px; background: #edf5f1; border-left: 3px solid var(--teal); }
+.inspector-status p { font-size: 12px; color: var(--teal); }
+.inspector-status.is-error { background: var(--fault-pale); border-color: var(--fault); }
+.inspector-status.is-error p { color: var(--fault); }
+.inspector-tools { margin-top: 16px; padding: 16px; border: 1px dashed var(--line-dark); border-radius: 8px; }
+.fault-armed { margin-top: 10px; color: var(--fault); font-size: 12px; }
+.demo-workbench .event-detail .mobile-map-jump { display: block; }
+.demo-workbench .sample-actions { grid-template-columns: 1fr; }
 .sample-workspace .workspace-heading h1 { font-size: clamp(26px, 3vw, 40px); }
 .sample-workspace .workspace-heading .button { flex-shrink: 0; }
 .workspace-grid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 18px; align-items: start; }

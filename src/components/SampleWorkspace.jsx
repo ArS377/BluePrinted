@@ -87,9 +87,9 @@ export function SampleWorkspace({ onCreate }) {
       setPersistence(result.persistence);
       if (response.ok) {
         setFindings((current) => [result.finding, ...current]);
-        setNotice("Saved! Follow its path in the block map.");
+        setNotice("Note saved.");
       } else {
-        setError(result.error);
+        setError("The note could not be saved. Your draft is still here.");
       }
       const elapsed = Math.round((performance.now() - started) * 10) / 10;
       const last = { id: crypto.randomUUID(), at: elapsed, clock: "browser", timestamp: new Date().toISOString(),
@@ -116,7 +116,7 @@ export function SampleWorkspace({ onCreate }) {
     try {
       await api.delete("/api/sample/findings");
       setFindings([]);
-      setNotice("This session's sample findings were cleared. Recorded traces contain no note content.");
+      setNotice("Saved notes cleared.");
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
@@ -139,6 +139,10 @@ export function SampleWorkspace({ onCreate }) {
 
   const activeEvent = trace?.events[position];
   const evidence = trace?.events.slice(0, position + 1) || [];
+
+  function showActivity() {
+    setMobileView("activity");
+  }
 
   function showMap() {
     setMobileView("map");
@@ -175,31 +179,30 @@ export function SampleWorkspace({ onCreate }) {
               <textarea ref={editor} id="finding-note" value={note} onChange={(event) => setNote(event.target.value)} rows={5} maxLength={1000} required disabled={busy} />
             </label>
             <div className="sample-actions">
-              <button className="button button-ink sample-save" type="submit" disabled={busy || !ready || !note.trim()}>{busy ? "Saving…" : fault ? "Save with test failure" : "Save finding"} <span aria-hidden="true">↗</span></button>
-              <label className={`fault-toggle ${fault ? "is-armed" : ""}`}>
-                <input type="checkbox" checked={fault} disabled={busy} onChange={(event) => setFault(event.target.checked)} />
-                <span>Reject the next save<small>A one-request test. Saved notes stay safe.</small></span>
-              </label>
+              <button className="button button-ink sample-save" type="submit" disabled={busy || !ready || !note.trim()}>{busy ? "Saving…" : "Save note"} <span aria-hidden="true">↗</span></button>
             </div>
           </form>
           {error && <div className="inline-error" role="alert">{error}{!ready && <button type="button" onClick={load}>Retry connection</button>}</div>}
           {notice && <p className="sample-notice" role="status">{notice}</p>}
-          {trace && <button className="mobile-map-jump" type="button" onClick={showMap}>See this request in the map →</button>}
-          <section className="saved-findings" aria-label="Saved findings">
-            <div className="section-heading"><h3>Saved findings</h3><span className="finding-count">{findings.length}</span></div>
+          <section className="saved-findings" aria-label="Saved notes">
+            <div className="section-heading"><h3>Saved notes</h3><span className="finding-count">{findings.length}</span></div>
             {findings.length ? <>
               <ul>{findings.slice(0, 3).map((finding) => <li key={finding.id}>{finding.note}</li>)}</ul>
               {findings.length > 3 && <details><summary>Show {findings.length - 3} more</summary><ul>{findings.slice(3).map((finding) => <li key={finding.id}>{finding.note}</li>)}</ul></details>}
-              <button className="text-action" type="button" disabled={busy} onClick={clear}>Clear sample findings</button>
+              <button className="text-action" type="button" disabled={busy} onClick={clear}>Clear saved notes</button>
             </> : <div className="notes-empty"><span aria-hidden="true">▧</span><p>A little empty in here.<br />Your first saved note goes here.</p></div>}
           </section>
-          <details className="sample-storage"><summary>Where does this go?</summary><p>{persistence === "postgres" ? "PostgreSQL" : "Server memory"}, scoped to your browser session. Notes expire after 24 hours{persistence === "memory" ? " or a server restart" : ""}. Trace events do not include your note text.</p></details>
         </section>
           </div>
+          {trace && <div className="preview-handoff"><span>BluePrinted recorded this save.</span><button type="button" onClick={showActivity}>See what happened →</button></div>}
         </section>
 
         <section ref={panels} className="inspector-pane" aria-labelledby="inspector-title">
           <header className="pane-heading"><h2 id="inspector-title">BluePrinted inspector</h2><p>See the steps behind each action in the demo app.</p></header>
+          <div className={`inspector-status ${traces[0]?.status === "error" ? "is-error" : ""}`}>
+            <p role="status">{traces.length ? `Latest action: Save note · ${traces[0].status === "error" ? "Failed" : "Succeeded"}` : "Save a note in the app preview to record an action."}</p>
+            {traces.length > 0 && <button type="button" onClick={() => { chooseTrace(traces[0]); showActivity(); }}>View trace →</button>}
+          </div>
           <nav className="inspector-switch" aria-label="Inspector views">
             <button type="button" aria-pressed={mobileView === "map"} onClick={() => setMobileView("map")}>Map</button>
             <button type="button" aria-pressed={mobileView === "activity"} onClick={() => setMobileView("activity")}>Activity <span>{trace?.events.length || 0}</span></button>
@@ -222,6 +225,14 @@ export function SampleWorkspace({ onCreate }) {
             onEvent={(event) => { setPlaying(false); setPosition(trace.events.findIndex((item) => item.id === event.id)); }}
             diagnosis={diagnosis} diagnosisError={diagnosisError} diagnosisBusy={diagnosisBusy} onInvestigate={investigate} onViewMap={showMap} live={false} />
           </div>
+          <section className="inspector-tools" aria-label="Demo test controls">
+            <label className={`fault-toggle ${fault ? "is-armed" : ""}`}>
+              <input type="checkbox" checked={fault} disabled={busy || !ready} onChange={(event) => setFault(event.target.checked)} />
+              <span>Make the next save fail<small>Affects one save. Existing notes stay safe.</small></span>
+            </label>
+            {fault && <p className="fault-armed" role="status">Armed. Save a note in the app preview to test the failure.</p>}
+          </section>
+          <details className="sample-storage"><summary>Sample storage & privacy</summary><p>{persistence === "postgres" ? "PostgreSQL" : "Server memory"}, scoped to your browser session. Notes expire after 24 hours{persistence === "memory" ? " or a server restart" : ""}. Trace events do not include your note text.</p></details>
         </section>
       </div>
     </div>
