@@ -7,7 +7,6 @@ import { EvidencePanel } from "./EvidencePanel.jsx";
 
 export function SampleWorkspace({ onCreate }) {
   const [fault, setFault] = useState(false);
-  const [replayed, setReplayed] = useState(false);
   const [mobileView, setMobileView] = useState("map");
   const editor = useRef(null);
   const panels = useRef(null);
@@ -151,45 +150,26 @@ export function SampleWorkspace({ onCreate }) {
   function replay() {
     if (!trace || busy) return;
     showMap();
-    setReplayed(true);
     if (playing) setPlaying(false);
     else { if (position >= trace.events.length - 1) setPosition(-1); setPlaying(true); }
   }
-  const hasSaved = traces.some((item) => item.status !== "error");
-  const hasFailed = traces.some((item) => item.status === "error");
-  const focusEditor = () => { editor.current?.focus(); editor.current?.select(); };
-  const hint = fault ? "Failure test armed. Save the note to see the request stop before storage."
-    : !trace ? "Start with a note in Research desk. Saving it sends a real request to the sample server."
-    : trace.status === "error" ? "The save failed; your note is still here. Select an event or choose Explain trace to inspect the error."
-    : "Your note is saved. Replay its path to follow the request through the blocks.";
 
   return (
     <div className="workspace-page sample-workspace">
       <section className="workspace-heading">
         <div>
-          <span className="context-label"><i className="playground-dot" />A working sample. Yours to experiment with.</span>
-          <h1>Save a note. <span>Watch it travel.</span></h1>
-          <p>Use the app, follow the request, and see what happens when a save fails.</p>
+          <span className="context-label"><i className="playground-dot" />BluePrinted playground</span>
+          <h1>Use the demo app. <span>See what happens inside.</span></h1>
         </div>
-        <button className="button button-primary" type="button" onClick={onCreate}><span aria-hidden="true">+</span> Create your own app</button>
+        <button className="button button-secondary" type="button" onClick={onCreate}><span aria-hidden="true">+</span> Create your own app</button>
       </section>
 
-      <nav className="try-actions" aria-label="Try the playground">
-        <button type="button" className={hasSaved ? "is-done" : "is-next"} onClick={focusEditor} disabled={busy}>
-          <span className="try-number" aria-hidden="true">{hasSaved ? "✓" : "1"}</span><span><strong>Try a save</strong><small>Edit the note, then send it</small></span><span className="try-arrow" aria-hidden="true">↗</span>
-        </button>
-        <button type="button" className={replayed ? "is-done" : trace ? "is-next" : ""} onClick={replay} disabled={!trace || busy}>
-          <span className="try-number" aria-hidden="true">{replayed ? "✓" : "2"}</span><span><strong>{playing ? "Pause the replay" : "Replay its path"}</strong><small>{trace ? "Follow each recorded step" : "Available after your first save"}</small></span><span className="try-arrow" aria-hidden="true">▷</span>
-        </button>
-        <button type="button" className={fault ? "is-armed" : hasFailed ? "is-done" : ""} disabled={busy || !ready} onClick={() => { setFault(!fault); focusEditor(); }}>
-          <span className="try-number" aria-hidden="true">{hasFailed ? "✓" : "3"}</span><span><strong>{fault ? "Cancel failure test" : "Test a failed save"}</strong><small>{fault ? "Armed for your next save" : "Keep your data, inspect the error"}</small></span><span className="try-arrow" aria-hidden="true">↗</span>
-        </button>
-      </nav>
-      <p className="bench-hint" role="status"><span aria-hidden="true">↳</span>{hint}</p>
-
-      <div className="builder-bench">
+      <div className="demo-workbench">
+        <section className="preview-pane" aria-labelledby="app-preview-title">
+          <header className="pane-heading"><h2 id="app-preview-title">App preview</h2><p>Research Desk is a demo note-taking app. Save a note to see how it works.</p></header>
+          <div className="preview-stage">
         <section className="sample-app" aria-label="Research desk sample">
-          <header className="sample-app-header"><span className="mini-app-icon" aria-hidden="true">▤</span><div><h2>Research desk</h2><span>Your mini-app</span></div><span className="sample-app-menu" aria-hidden="true">···</span></header>
+          <header className="sample-app-header"><span className="mini-app-icon" aria-hidden="true">▤</span><div><h2>Research desk</h2><span>A place for your notes</span></div></header>
           <form className="sample-action-bar" onSubmit={save}>
             <label className="sample-editor" htmlFor="finding-note">What did you find?
               <textarea ref={editor} id="finding-note" value={note} onChange={(event) => setNote(event.target.value)} rows={5} maxLength={1000} required disabled={busy} />
@@ -215,13 +195,16 @@ export function SampleWorkspace({ onCreate }) {
           </section>
           <details className="sample-storage"><summary>Where does this go?</summary><p>{persistence === "postgres" ? "PostgreSQL" : "Server memory"}, scoped to your browser session. Notes expire after 24 hours{persistence === "memory" ? " or a server restart" : ""}. Trace events do not include your note text.</p></details>
         </section>
+          </div>
+        </section>
 
-        <div ref={panels} className={`workspace-grid sample-map-area mobile-view-${mobileView}`}>
-          <nav className="bench-view-switch" aria-label="Playground panels">
-            <button type="button" aria-pressed={mobileView === "map"} onClick={() => setMobileView("map")}>Block map</button>
+        <section ref={panels} className="inspector-pane" aria-labelledby="inspector-title">
+          <header className="pane-heading"><h2 id="inspector-title">BluePrinted inspector</h2><p>See the steps behind each action in the demo app.</p></header>
+          <nav className="inspector-switch" aria-label="Inspector views">
+            <button type="button" aria-pressed={mobileView === "map"} onClick={() => setMobileView("map")}>Map</button>
             <button type="button" aria-pressed={mobileView === "activity"} onClick={() => setMobileView("activity")}>Activity <span>{trace?.events.length || 0}</span></button>
           </nav>
-          <div className="workspace-main">
+          <div className="workspace-main" hidden={mobileView !== "map"}>
             <Blueprint manifest={sampleManifest(persistence)} evidence={evidence} activeNodeId={activeEvent?.nodeId} sample />
             <section className="replay-bar" aria-label="Trace replay">
               <div className="replay-current"><span aria-hidden="true">▷</span><strong>{activeEvent?.title || (trace ? "Ready to replay" : "Your request, step by step")}</strong></div>
@@ -233,11 +216,13 @@ export function SampleWorkspace({ onCreate }) {
               <small>Replay is slowed down. Event timings are measured.</small>
             </section>
           </div>
+          <div hidden={mobileView !== "activity"}>
           <EvidencePanel project={sampleProject} traces={traces} activeTrace={trace}
             activeEventId={activeEvent?.id} onTrace={(id) => chooseTrace(traces.find((item) => item.id === id))}
             onEvent={(event) => { setPlaying(false); setPosition(trace.events.findIndex((item) => item.id === event.id)); }}
             diagnosis={diagnosis} diagnosisError={diagnosisError} diagnosisBusy={diagnosisBusy} onInvestigate={investigate} onViewMap={showMap} live={false} />
-        </div>
+          </div>
+        </section>
       </div>
     </div>
   );
