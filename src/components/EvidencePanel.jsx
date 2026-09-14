@@ -96,7 +96,7 @@ export function EvidencePanel({ project, traces, activeTrace, activeEventId, onT
         </> : <div className="trace-empty">
           <div className="empty-trace-lines" aria-hidden="true"><i /><i /><i /></div>
           <h3>{sample ? "Let's follow a request." : "No events received"}</h3>
-          <p>{sample ? "Save a note in Research desk. The steps it takes through the app will appear here." : "Open App runtime, pair the published app, then perform an instrumented action."}</p>
+          <p>{sample ? "Save a note in Research desk. The steps it takes through the app will appear here." : "Open Connection in the inspector to pair the published app, then use it in App preview. Instrumented actions will appear here."}</p>
           <small>{sample ? "Recorded from the working sample." : "An open feed does not confirm that the app is paired."}</small>
         </div>}
       </>}

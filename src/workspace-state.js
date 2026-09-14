@@ -50,7 +50,7 @@ export function buildGuidance(project, now = Date.now()) {
   if (previewUrl(project.runtimeUrl) && !currentSnapshot(project)) return { ...common, title: "Inspect the published app’s architecture.",
     detail: "The published URL is available in App preview. Choose Inspect build to create a map of its components and connections. You can use the preview before inspecting or pairing." };
   if (currentSnapshot(project)) return { ...common, title: project.runtimeUrl ? "The published app is ready to pair." : "The architecture snapshot is saved.",
-    detail: project.runtimeUrl ? "Open App runtime, pair the published URL, and perform an instrumented action to collect events." : "Check the app in Replit, then publish it. Pair the published URL to collect runtime evidence." };
+    detail: project.runtimeUrl ? "Open Connection in the inspector, pair the published URL, then use App preview to collect events from instrumented actions." : "Check the app in Replit, then publish it. Pair the published URL to collect runtime evidence." };
   return { ...common, title: waiting ? "Check whether Replit needs input." : "Open the build in Replit.",
     detail: "BluePrinted has an editor link, but cannot see whether Agent is running or waiting. Resolve any questions, AI setup, or credit limits there. When the app runs, return and inspect the build." };
 }

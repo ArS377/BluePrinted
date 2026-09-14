@@ -22,8 +22,8 @@ export function AppPreview({ project, pairing, onReady, onOpenWindow }) {
   if (!url) {
     return (
       <div className="preview-empty">
-        <strong>No published runtime yet</strong>
-        <p>Publish through Replit, then connect the URL to watch the app inside this workspace.</p>
+        <strong>{project.status === "publishing" ? "Waiting for the published URL" : "Your app preview will appear here"}</strong>
+        <p>{project.status === "publishing" ? "Choose Check publish status to retrieve the app URL." : "Finish the build in Replit, then choose Publish app. The published app will load here; inspection and pairing are separate steps."}</p>
       </div>
     );
   }

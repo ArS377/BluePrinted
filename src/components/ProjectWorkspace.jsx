@@ -42,6 +42,7 @@ export function ProjectWorkspace({
   diagnosisBusy
 }) {
   const [view, setView] = useState("blueprint");
+  const [pane, setPane] = useState("app");
   const [runtimeUrl, setRuntimeUrl] = useState(project.runtimeUrl || "");
   const [change, setChange] = useState("");
   const [showUpdate, setShowUpdate] = useState(false);
@@ -142,17 +143,29 @@ export function ProjectWorkspace({
         </div>
       )}
 
-      <nav className="workspace-tabs" aria-label="Project views">
-        <button className={view === "blueprint" ? "is-active" : ""} type="button" onClick={() => setView("blueprint")}>Blueprint</button>
-        <button className={view === "app" ? "is-active" : ""} type="button" onClick={() => setView("app")}>App runtime</button>
-        <button className={view === "changes" ? "is-active" : ""} type="button" onClick={() => setView("changes")}>Changes</button>
-        <span></span>
-        <button className="update-action" type="button" onClick={() => setShowUpdate(true)} disabled={Boolean(busyAction) || !project.replId}>Send an update to Replit</button>
+      <div className="project-update-bar"><button className="text-action" type="button" onClick={() => setShowUpdate(true)} disabled={Boolean(busyAction) || !project.replId}>Send an update to Replit →</button></div>
+      <nav className="pane-switch" aria-label="Project panes">
+        <button type="button" aria-pressed={pane === "app"} onClick={() => setPane("app")}>App preview</button>
+        <button type="button" aria-pressed={pane === "inspector"} onClick={() => setPane("inspector")}>Inspector</button>
+      </nav>
+      <div className={`demo-workbench project-workbench pane-${pane}`}>
+        <section className="preview-pane" aria-labelledby="project-preview-title">
+          <header className="pane-heading"><h2 id="project-preview-title">App preview</h2><p>Use {project.name} here. Inspection and trace setup live in the inspector.</p></header>
+          <AppPreview project={project} pairing={pairingExpired ? null : pairing} onOpenWindow={openRuntime} />
+          <div className="preview-handoff"><button type="button" onClick={() => { setPane("inspector"); setView("activity"); }}>See recorded activity →</button></div>
+        </section>
+        <section className="inspector-pane" aria-labelledby="project-inspector-title">
+          <header className="pane-heading"><h2 id="project-inspector-title">BluePrinted inspector</h2><p>Explore the architecture, recorded actions, and changes to your app.</p></header>
+      <nav className="inspector-switch project-inspector-switch" aria-label="Inspector views">
+        <button aria-pressed={view === "blueprint"} type="button" onClick={() => setView("blueprint")}>Map</button>
+        <button aria-pressed={view === "activity"} type="button" onClick={() => setView("activity")}>Activity</button>
+        <button aria-pressed={view === "app"} type="button" onClick={() => setView("app")}>Connection</button>
+        <button aria-pressed={view === "changes"} type="button" onClick={() => setView("changes")}>Changes</button>
       </nav>
 
-      <div className="workspace-grid">
         <div className="workspace-main">
-          {view === "blueprint" && (
+          <div hidden={view !== "blueprint"}>
+          {(
             manifest ? (
               <>
               {!snapshotIsCurrent && <div className="project-notice"><strong>Showing the previous snapshot</strong><p>{guidance.detail}</p></div>}
@@ -163,7 +176,7 @@ export function ProjectWorkspace({
                 diff={project.manifestDiff}
               />
               {snapshotIsCurrent && <section className="build-guidance"><h3>{guidance.title}</h3><p>{guidance.detail}</p>
-                {project.runtimeUrl && <button className="text-action" type="button" onClick={() => setView("app")}>Open App runtime →</button>}
+                {project.runtimeUrl && <button className="text-action" type="button" onClick={() => setView("app")}>Set up trace connection →</button>}
               </section>}
               </>
             ) : (
@@ -171,29 +184,30 @@ export function ProjectWorkspace({
                 <span className="context-label">Architecture not inspected</span>
                 <h2>{guidance.title}</h2>
                 <p>{guidance.detail}</p>
-                <ol>
+                {!previewUrl(project.runtimeUrl) && <ol>
                   <li className={project.replId ? "is-done" : ""}><span>{project.replId ? "✓" : "1"}</span> {project.replId ? "Replit returned a project" : "Awaiting a project from Replit"}</li>
                   <li><span>2</span> Run the app in Replit and resolve any setup questions</li>
                   <li><span>3</span> Return here to inspect the architecture</li>
-                </ol>
+                </ol>}
                 <button className="button button-ink" type="button" onClick={onInspect} disabled={Boolean(busyAction) || !project.replId}>Inspect build</button>
-                <div className="build-guidance">
+                {!previewUrl(project.runtimeUrl) && <div className="build-guidance">
                   <h3>{guidance.waiting ? "Still on the build screen?" : "Where can I check progress?"}</h3>
                   <p>Open Replit to see the latest activity. If Agent stopped for an AI key, credits, or a question, continuing here will not resume it.</p>
                   {project.replUrl && <a href={project.replUrl} target="_blank" rel="noreferrer">Open this project in Replit ↗</a>}
-                </div>
+                </div>}
                 {Number.isFinite(Date.parse(guidance.lastRecordedAt)) && <time className="last-confirmed" dateTime={guidance.lastRecordedAt}>Last recorded update: {new Date(guidance.lastRecordedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}. No live Agent progress feed.</time>}
               </section>
             )
           )}
+          </div>
 
-          {view === "app" && (
+          <div hidden={view !== "app"}>
             <div className="runtime-view">
               <form className="runtime-connect" onSubmit={submitPairing}>
                 <div>
                   <span className="eyebrow">Runtime pairing</span>
                   <strong>{pairingExpired ? "Pairing code expired" : project.pairingStatus === "connected" ? "Runtime was paired" : "Connect the published app"}</strong>
-                  <p>The app needs the BluePrinted bridge before pairing can work. The one-use code expires after five minutes and grants trace submission only.</p>
+                  <p>Pair to collect activity from the app. You can use App preview without pairing. The app needs the BluePrinted bridge to send events; the one-use code expires after five minutes.</p>
                   {pairing && !pairingExpired && <p>Code ready. The preview will send it to the matching app origin. If no events arrive, check that the bridge is installed.</p>}
                 </div>
                 <label>
@@ -206,9 +220,8 @@ export function ProjectWorkspace({
                   {(pairing || project.pairingStatus === "connected" || project.pairingStatus === "waiting") && <button className="button button-paper" type="button" disabled={Boolean(busyAction)} onClick={onRevokePairing}>Revoke runtime access</button>}
                 </div>
               </form>
-              <AppPreview project={project} pairing={pairingExpired ? null : pairing} onOpenWindow={openRuntime} />
             </div>
-          )}
+          </div>
 
           {view === "changes" && (
             <section className="changes-view">
@@ -246,6 +259,7 @@ export function ProjectWorkspace({
           )}
         </div>
 
+        <div hidden={view !== "activity"}>
         <EvidencePanel
           project={project}
           traces={traces}
@@ -253,11 +267,15 @@ export function ProjectWorkspace({
           activeEventId={activeEvent?.id}
           onTrace={onTrace}
           onEvent={setActiveEvent}
+          onViewMap={() => setView("blueprint")}
           diagnosis={diagnosis}
           diagnosisBusy={diagnosisBusy}
           onInvestigate={onInvestigate}
           live={live}
         />
+        <button className="text-action" type="button" onClick={() => setView("app")}>Set up trace connection →</button>
+        </div>
+        </section>
       </div>
 
       <Dialog open={showUpdate} onClose={() => { if (busyAction !== "update") setShowUpdate(false); }} labelledBy="update-title" className="update-sheet">

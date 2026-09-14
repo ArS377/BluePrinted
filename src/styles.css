@@ -141,6 +141,16 @@ summary::marker { color: var(--ink-soft); }
 .demo-workbench .event-detail .mobile-map-jump { display: block; }
 .demo-workbench .sample-actions { grid-template-columns: 1fr; }
 .pane-switch, .return-to-app { display: none; }
+.project-workbench { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.project-update-bar { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+.project-inspector-switch { flex-wrap: wrap; }
+.project-inspector-switch button { min-width: 70px; font-size: 12px; }
+.project-workbench .manifest-empty { padding: 24px; }
+.project-workbench .manifest-empty h2 { font-size: 26px; }
+.project-workbench .manifest-empty > p { font-size: 14px; }
+.project-workbench .preview-shell iframe { height: 650px; }
+.project-workbench .runtime-connect { padding: 20px; }
+.project-workbench .runtime-buttons { flex-wrap: wrap; }
 @media (max-width: 899px) {
   .demo-workbench { grid-template-columns: minmax(0, 1fr); }
   .demo-workbench.pane-app > .inspector-pane, .demo-workbench.pane-inspector > .preview-pane { display: none; }

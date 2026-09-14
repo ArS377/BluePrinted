@@ -23,7 +23,7 @@ const steps = [
     output: "Declared boundaries have not been observed running. A runtime event is needed to mark a boundary as observed.",
     path: ["App runs", "Inspect build", "Architecture map"] },
   { label: "Observe & update", title: "Pair the published app to record its actions.",
-    body: "Publish the app, open App runtime, and pair its URL. Use the instrumented app to collect events. Send an update when you want a change, then inspect again to compare versions.",
+    body: "Publish the app to load it in App preview. In the inspector, open Connection and pair its URL. Use the instrumented app to collect events in Activity. Send an update when you want a change, then inspect again to compare versions.",
     output: "Pairing requires the BluePrinted bridge in the generated app. Server-only actions need their own instrumentation; pairing alone does not expose them.",
     path: ["Publish & pair", "Use the app", "Compare updates"] }
 ];
