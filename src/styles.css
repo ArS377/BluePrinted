@@ -123,8 +123,6 @@ summary::marker { color: var(--ink-soft); }
 .pane-heading h2 { font-size: 23px; }
 .pane-heading p { margin-top: 6px; font-size: 13px; max-width: 460px; }
 .preview-stage { padding: 24px; border: 1px solid #d5d3df; border-radius: 16px; background: #e9e7ef; }
-.inspector-pane { border-top: 3px solid var(--blue); }
-.preview-pane { border-top: 3px solid #655095; }
 .inspector-switch { display: flex; gap: 6px; padding: 8px; margin-bottom: 12px; background: #e8e7f3; border-radius: 10px; }
 .inspector-switch button { flex: 1; padding: 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); }
 .inspector-switch button[aria-pressed="true"] { color: var(--blue); background: white; }
